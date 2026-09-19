@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escape the Breach: Typing Protocol</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="scanlines" aria-hidden="true"></div>
+
+    <section id="start-screen" class="overlay" aria-label="Start screen">
+      <div class="panel start-panel">
+        <p class="eyebrow">SECTOR 7 // CONTAINMENT FAILURE</p>
+        <h1>ESCAPE THE BREACH</h1>
+        <p class="subtitle">TYPING PROTOCOL</p>
+        <p class="lore">
+          Experiment-09 is loose in the corridor. Sprint the last
+          <strong>1000m</strong> to the blast door. Type the escape logs.
+          Do not stall. Do not look back.
+        </p>
+
+        <div class="difficulty-grid" id="difficulty-grid">
+          <button class="diff-card" data-diff="scout" type="button">
+            <span class="diff-tag">01</span>
+            <span class="diff-name">Scout</span>
+            <span class="diff-desc">Slow pursuit. Door holds ~90s. Learn the protocol.</span>
+          </button>
+          <button class="diff-card" data-diff="operative" type="button">
+            <span class="diff-tag">02</span>
+            <span class="diff-name">Operative</span>
+            <span class="diff-desc">Medium pressure. Door holds ~70s. Standard extraction.</span>
+          </button>
+          <button class="diff-card nightmare" data-diff="nightmare" type="button">
+            <span class="diff-tag">03</span>
+            <span class="diff-name">Nightmare</span>
+            <span class="diff-desc">Aggressive hunt. Door slams in ~55s. No second chance.</span>
+          </button>
+        </div>
+
+        <div class="start-footer">
+          <button id="btn-mute-start" class="ghost-btn" type="button">Audio: On</button>
+          <p class="hint">Type clean words to charge Adrenaline. Shift or auto-boost for a 3s turbo.</p>
+        </div>
+
+        <div class="scores-block">
+          <h2>High Scores</h2>
+          <div id="high-scores" class="scores"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="game-view" hidden>
+      <header class="hud-bar">
+        <div class="brand">
+          <span class="brand-mark">ETB</span>
+          <span class="brand-title">TYPING PROTOCOL</span>
+        </div>
+        <div class="hud-stats">
+          <div class="stat"><span class="stat-label">WPM</span><span id="stat-wpm">0</span></div>
+          <div class="stat"><span class="stat-label">ACC</span><span id="stat-acc">100%</span></div>
+          <div class="stat"><span class="stat-label">STREAK</span><span id="stat-streak">0</span></div>
+          <div class="stat"><span class="stat-label">DIST</span><span id="stat-dist">0m</span></div>
+          <div class="stat"><span class="stat-label">DOOR</span><span id="stat-door">100%</span></div>
+        </div>
+        <button id="btn-mute-game" class="ghost-btn compact" type="button">Audio: On</button>
+      </header>
+
+      <div id="minimap" aria-label="Race progress">
+        <div class="minimap-track">
+          <div id="map-door" class="map-icon door" title="Exit door">DOOR</div>
+          <div id="map-player" class="map-icon player" title="You">YOU</div>
+          <div id="map-monster" class="map-icon monster" title="Experiment-09">09</div>
+        </div>
+        <div id="map-gap" class="map-gap">GAP --m</div>
+      </div>
+
+      <div id="canvas-wrap">
+        <canvas id="game-canvas"></canvas>
+      </div>
+
+      <div id="typing-panel">
+        <div class="adrenaline-row">
+          <span class="ad-label">ADRENALINE</span>
+          <div class="ad-track" id="ad-track">
+            <div id="ad-fill" class="ad-fill"></div>
+          </div>
+          <span id="ad-status" class="ad-status">5 CLEAN WORDS</span>
+        </div>
+        <div id="passage" class="passage" aria-live="polite"></div>
+        <p id="focus-hint" class="focus-hint">Click here and type to run</p>
+        <input
+          id="hidden-input"
+          type="text"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          aria-label="Typing input"
+        >
+      </div>
+    </section>
+
+    <section id="result-modal" class="overlay" hidden aria-label="Run result">
+      <div class="panel result-panel">
+        <p id="result-eyebrow" class="eyebrow">TRANSMISSION</p>
+        <h2 id="result-title">EXTRACTED</h2>
+        <p id="result-copy" class="lore"></p>
+        <div class="result-grid">
+          <div><span>WPM</span><strong id="res-wpm">0</strong></div>
+          <div><span>Accuracy</span><strong id="res-acc">0%</strong></div>
+          <div><span>Time</span><strong id="res-time">0.0s</strong></div>
+          <div><span>Difficulty</span><strong id="res-diff">—</strong></div>
+        </div>
+        <p id="result-record" class="record-line"></p>
+        <button id="btn-again" class="primary-btn" type="button">Re-enter Corridor</button>
+      </div>
+    </section>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
