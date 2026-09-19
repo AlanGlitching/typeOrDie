@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Escape the Breach: Typing Protocol</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -16,32 +16,97 @@
         <h1>ESCAPE THE BREACH</h1>
         <p class="subtitle">TYPING PROTOCOL</p>
         <p class="lore">
-          Experiment-09 is loose in the corridor. Sprint the last
-          <strong>1000m</strong> to the blast door. Type the escape logs.
-          Do not stall. Do not look back.
+          Experiment-09 is loose in the corridor. Choose a threat ladder,
+          flip <strong>Endless</strong> to survive for distance, or open
+          <strong>The Laboratory</strong> to dial every parameter.
         </p>
 
-        <div class="difficulty-grid" id="difficulty-grid">
+        <div class="mode-bar">
+          <button id="btn-endless" class="toggle-btn" type="button" aria-pressed="false">Endless Mode</button>
+          <button id="btn-lab" class="toggle-btn" type="button" aria-pressed="false" aria-expanded="false">Customize</button>
+        </div>
+
+        <div class="difficulty-grid five" id="difficulty-grid">
+          <button class="diff-card" data-diff="recruit" type="button">
+            <span class="diff-tag">01 // CASUAL</span>
+            <span class="diff-name">Recruit</span>
+            <span class="diff-desc">35 WPM hunt. Slow door. 0.2s typo stall.</span>
+          </button>
           <button class="diff-card" data-diff="scout" type="button">
-            <span class="diff-tag">01</span>
+            <span class="diff-tag">02 // STANDARD</span>
             <span class="diff-name">Scout</span>
-            <span class="diff-desc">Slow pursuit. Door holds ~90s. Learn the protocol.</span>
+            <span class="diff-desc">50 WPM hunt. Standard door. 0.3s stall.</span>
           </button>
           <button class="diff-card" data-diff="operative" type="button">
-            <span class="diff-tag">02</span>
+            <span class="diff-tag">03 // CHALLENGING</span>
             <span class="diff-name">Operative</span>
-            <span class="diff-desc">Medium pressure. Door holds ~70s. Standard extraction.</span>
+            <span class="diff-desc">70 WPM hunt. Door surges in the last 300m. 0.4s stall.</span>
           </button>
           <button class="diff-card nightmare" data-diff="nightmare" type="button">
-            <span class="diff-tag">03</span>
+            <span class="diff-tag">04 // HARDCORE</span>
             <span class="diff-name">Nightmare</span>
-            <span class="diff-desc">Aggressive hunt. Door slams in ~55s. No second chance.</span>
+            <span class="diff-desc">90 WPM hunt. Aggressive door. 0.5s stall.</span>
           </button>
+          <button class="diff-card apex" data-diff="apex" type="button">
+            <span class="diff-tag">05 // INSANE</span>
+            <span class="diff-name">Apex Predator</span>
+            <span class="diff-desc">Hunt scales to 105% of your peak WPM. 1.0s stall.</span>
+          </button>
+        </div>
+
+        <div id="lab-panel" class="lab-panel" hidden>
+          <h2>The Laboratory</h2>
+          <div class="lab-grid">
+            <label class="lab-field">
+              <span>Monster Speed <em id="lab-monster-val">50 WPM</em></span>
+              <input id="lab-monster" type="range" min="20" max="140" step="5" value="50">
+            </label>
+            <label class="lab-check">
+              <input id="lab-monster-off" type="checkbox">
+              <span>Disable hunt (practice)</span>
+            </label>
+            <label class="lab-field">
+              <span>Escape Distance</span>
+              <select id="lab-distance">
+                <option value="250">250m Sprint</option>
+                <option value="500">500m</option>
+                <option value="1000" selected>1000m Standard</option>
+                <option value="2000">2000m Marathon</option>
+                <option value="endless">Endless Survival</option>
+              </select>
+            </label>
+            <label class="lab-field">
+              <span>Door Timer</span>
+              <select id="lab-door">
+                <option value="relaxed">Relaxed</option>
+                <option value="standard" selected>Standard</option>
+                <option value="blitz">Blitz</option>
+                <option value="off">Off (monster only)</option>
+              </select>
+            </label>
+            <label class="lab-field">
+              <span>Typo Penalty <em id="lab-stall-val">0.3s</em></span>
+              <input id="lab-stall" type="range" min="0" max="1" step="0.1" value="0.3">
+            </label>
+            <label class="lab-field">
+              <span>Text Complexity</span>
+              <select id="lab-text">
+                <option value="standard" selected>Standard Vocabulary</option>
+                <option value="lore">Sci-Fi Horror Lore</option>
+                <option value="code">Code Breaker</option>
+              </select>
+            </label>
+            <label class="lab-check">
+              <input id="lab-punct" type="checkbox" checked>
+              <span>Punctuation &amp; Capitals</span>
+            </label>
+          </div>
+          <button id="btn-lab-start" class="primary-btn" type="button">Initialize Lab Run</button>
         </div>
 
         <div class="start-footer">
           <button id="btn-mute-start" class="ghost-btn" type="button">Audio: On</button>
-          <p class="hint">Type clean words to charge Adrenaline. Shift or auto-boost for a 3s turbo.</p>
+          <p class="hint">Presets start immediately. Endless + Customize persist between runs.</p>
         </div>
 
         <div class="scores-block">
@@ -94,12 +159,14 @@
         </div>
         <p id="focus-hint" class="focus-hint">Click here and type to run</p>
         <input
-          id="hidden-input"
+          id="mobile-input"
           type="text"
           autocomplete="off"
           autocapitalize="off"
           autocorrect="off"
           spellcheck="false"
+          inputmode="text"
+          enterkeyhint="enter"
           aria-label="Typing input"
         >
       </div>
@@ -114,8 +181,9 @@
           <div><span>WPM</span><strong id="res-wpm">0</strong></div>
           <div><span>Accuracy</span><strong id="res-acc">0%</strong></div>
           <div><span>Time</span><strong id="res-time">0.0s</strong></div>
-          <div><span>Difficulty</span><strong id="res-diff">—</strong></div>
+          <div><span>Distance</span><strong id="res-dist">0m</strong></div>
         </div>
+        <p id="res-settings" class="settings-line"></p>
         <p id="result-record" class="record-line"></p>
         <button id="btn-again" class="primary-btn" type="button">Re-enter Corridor</button>
       </div>

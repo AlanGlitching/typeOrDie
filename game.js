@@ -4,55 +4,169 @@
   const TRACK = 1000;
   const STORAGE_KEY = "etb-highscores";
   const MUTE_KEY = "etb-muted";
+  const SETTINGS_KEY = "etb-settings";
   const STALL_SEC = 0.4;
   const ADRENALINE_WORDS = 5;
   const ADRENALINE_SEC = 3;
   const ADRENALINE_MULT = 1.8;
 
-  const PASSAGES = [
-    "CONTAINMENT BREACH // SECTOR 7. Experiment-09 has left the observation pit. All non-essential staff initiate Protocol Ash. Do not attempt visual contact. The entity hunts by vibration and breath.",
-    "ESCAPE LOG 14: The corridor lights are failing in sequence. I can hear it scraping the bulkheads behind me. Keep moving. Keep typing. The blast door will not wait for hesitation.",
-    "WARNING: Hydraulic clamps on Gate Theta are already cycling. Estimated seal in minutes, not hours. Sprint the last kilometer. If you stall, it closes the gap.",
-    "SUBJECT NOTES: Experiment-09 presents as a living shadow with clustered red optics and razor horns. Tendrils sample the air. It accelerates when prey stops making progress.",
-    "TERMINAL 3B: Override accepted. Emergency lighting only. Steam vents along the service pipes are still live. Floor plates 88 through 94 are unstable. Stay on the center line.",
-    "VOICE IN THE COMM: Do not look back. Looking back is how the last three teams were taken. Eyes on the door. Hands on the keys. Breath in four, out in two.",
-    "PROTOCOL FRAGMENT: Five clean words charge the adrenaline injector. Dump it when the gauge spikes. Three seconds of turbo. After that you are meat again unless you keep the streak.",
-    "SECURITY CAM 09: Shape occupies the west hall. Distance unknown. Heat signature negative. Audio shows a low rumble that rises as it nears. If the rumble fills the room, you are already lost.",
-    "MEDBAY SCRATCH: Typo equals stall. Stall equals teeth. Correct the letter and run. Accuracy is not vanity here. Accuracy is distance.",
-    "FINAL DIRECTIVE: Cross the threshold before the slab drops. If the door hits zero you are sealed in with it. If it reaches you first, the logs end here. Type. Sprint. Escape.",
-    "AUX POWER: Coolant lines ruptured near junction 12. The air tastes like copper and ozone. Keep your visor sealed. The entity does not need air. You do.",
-    "LAST OPERATOR: I made it to 860 meters. The door was a slit of amber light. Then I missed a word and the rumble ate the hallway. Do better than I did.",
+  const LEX = {
+    nouns: [
+      "terminal", "containment", "airlock", "reactor", "specimen", "protocol",
+      "shadow", "bulkhead", "corridor", "override", "sensor", "core", "breach",
+      "perimeter", "generator", "hatch", "visor", "clamp", "siren", "coolant",
+    ],
+    verbs: [
+      "collapse", "override", "shatter", "escape", "terminate", "isolate",
+      "activate", "bypass", "unseal", "accelerate", "rupture", "stabilize",
+      "divert", "disable", "seal", "purge", "evacuate",
+    ],
+    adjectives: [
+      "critical", "hostile", "hydraulic", "compromised", "unstable", "rapidly",
+      "emergency", "synthetic", "lethal", "autonomous", "seismic", "manual",
+      "failing", "locked", "burning",
+    ],
+    connectors: [
+      "before it catches",
+      "lock the gates",
+      "divert power to thrusters",
+      "pressure drops to zero",
+      "movement detected in quadrant four",
+      "do not look back",
+      "keep the visor sealed",
+      "sprint for the blast door",
+    ],
+  };
+
+  const COMMON_WORDS = [
+    "the", "of", "to", "and", "a", "in", "is", "it", "you", "that", "he", "was",
+    "for", "on", "are", "with", "as", "his", "they", "be", "at", "one", "have",
+    "this", "from", "or", "had", "by", "but", "some", "what", "there", "we",
+    "can", "out", "other", "were", "all", "your", "when", "up", "use", "word",
+    "how", "said", "each", "she", "which", "do", "their", "time", "if", "will",
+    "way", "about", "many", "then", "them", "write", "would", "like", "so",
+    "these", "her", "long", "make", "thing", "see", "him", "two", "has", "look",
+    "more", "day", "could", "go", "come", "did", "number", "sound", "no", "most",
+    "who", "over", "know", "water", "than", "call", "first", "people", "may",
+    "down", "side", "been", "now", "find", "any", "new", "work", "part", "take",
+    "get", "place", "made", "live", "where", "after", "back", "little", "only",
+    "round", "man", "year", "came", "show", "every", "good", "me", "give", "our",
+    "under", "name", "very", "through", "just", "form", "great", "think", "say",
+    "help", "low", "line", "turn", "cause", "much", "mean", "before", "move",
+    "right", "old", "too", "same", "tell", "does", "set", "three", "want", "air",
+    "well", "also", "play", "small", "end", "put", "home", "read", "hand", "large",
+    "spell", "add", "even", "land", "here", "must", "big", "high", "such", "follow",
+    "act", "why", "ask", "change", "went", "light", "kind", "off", "need", "house",
+    "try", "us", "again", "point", "world", "near", "build", "self", "earth",
+    "father", "head", "stand", "own", "page", "should", "found", "answer", "school",
+    "grow", "study", "still", "learn", "plant", "cover", "food", "sun", "four",
+    "between", "state", "keep", "eye", "never", "last", "let", "thought", "city",
+    "tree", "cross", "farm", "hard", "start", "might", "story", "saw", "far", "sea",
+    "draw", "left", "late", "run", "while", "press", "close", "night", "real",
+    "life", "few", "north", "book", "carry", "took", "science", "eat", "room",
+    "friend", "began", "idea", "stop", "once", "base", "hear", "cut", "sure",
+    "watch", "color", "face", "wood", "main", "enough", "open", "seem", "next",
+    "always", "those", "both", "paper", "together", "got", "group", "often",
+    "important", "until", "children", "feet", "car", "mile", "walk", "white",
+    "begin", "example", "music", "mark", "letter", "river", "care", "second", "rain",
   ];
 
   const DIFFICULTIES = {
+    recruit: {
+      id: "recruit",
+      name: "Recruit",
+      tag: "Casual",
+      targetWpm: 35,
+      monsterWpm: 35,
+      doorTime: 120,
+      startGap: 180,
+      closeAccel: 1.02,
+      stall: 0.2,
+    },
     scout: {
       id: "scout",
       name: "Scout",
-      targetWpm: 35,
-      doorTime: 90,
-      startGap: 150,
-      monsterPace: 1.18,
-      closeAccel: 1.04,
+      tag: "Standard",
+      targetWpm: 50,
+      monsterWpm: 50,
+      doorTime: 80,
+      startGap: 130,
+      closeAccel: 1.06,
+      stall: 0.3,
     },
     operative: {
       id: "operative",
       name: "Operative",
-      targetWpm: 50,
-      doorTime: 70,
+      tag: "Challenging",
+      targetWpm: 70,
+      monsterWpm: 70,
+      doorTime: 64,
       startGap: 100,
-      monsterPace: 1.04,
       closeAccel: 1.1,
+      stall: 0.4,
+      doorAccelFinal: true,
     },
     nightmare: {
       id: "nightmare",
       name: "Nightmare",
-      targetWpm: 70,
-      doorTime: 55,
-      startGap: 62,
-      monsterPace: 0.93,
-      closeAccel: 1.22,
+      tag: "Hardcore",
+      targetWpm: 90,
+      monsterWpm: 90,
+      doorTime: 50,
+      startGap: 72,
+      closeAccel: 1.16,
+      stall: 0.5,
+    },
+    apex: {
+      id: "apex",
+      name: "Apex Predator",
+      tag: "Insane",
+      targetWpm: 90,
+      monsterWpm: 70,
+      doorTime: 46,
+      startGap: 55,
+      closeAccel: 1.2,
+      stall: 1,
+      adaptive: true,
+      adaptiveMult: 1.05,
     },
   };
+
+  const DOOR_SCALE = { relaxed: 1.6, standard: 1, blitz: 0.62 };
+
+  const defaultSettings = () => ({
+    lastPreset: "scout",
+    endless: false,
+    labOpen: false,
+    lab: {
+      monsterWpm: 50,
+      monsterOff: false,
+      distance: "1000",
+      door: "standard",
+      stall: 0.3,
+      textMode: "standard",
+      punctuation: true,
+    },
+  });
+
+  function loadSettings() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
+      const base = defaultSettings();
+      if (!raw || typeof raw !== "object") return base;
+      return {
+        ...base,
+        ...raw,
+        lab: { ...base.lab, ...(raw.lab || {}) },
+      };
+    } catch {
+      return defaultSettings();
+    }
+  }
+
+  function saveSettings(settings) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }
 
   const $ = (id) => document.getElementById(id);
 
@@ -75,13 +189,19 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const data = raw ? JSON.parse(raw) : {};
-      return {
-        scout: Array.isArray(data.scout) ? data.scout : [],
-        operative: Array.isArray(data.operative) ? data.operative : [],
-        nightmare: Array.isArray(data.nightmare) ? data.nightmare : [],
+      const empty = {
+        recruit: [], scout: [], operative: [], nightmare: [], apex: [],
+        endless: [], custom: [],
       };
+      Object.keys(empty).forEach((k) => {
+        empty[k] = Array.isArray(data[k]) ? data[k] : [];
+      });
+      return empty;
     } catch {
-      return { scout: [], operative: [], nightmare: [] };
+      return {
+        recruit: [], scout: [], operative: [], nightmare: [], apex: [],
+        endless: [], custom: [],
+      };
     }
   }
 
@@ -91,9 +211,12 @@
 
   function addScore(entry) {
     const scores = loadScores();
-    const list = scores[entry.difficulty] || [];
+    const list = scores[entry.difficulty] || (scores[entry.difficulty] = []);
     list.push(entry);
     list.sort((a, b) => {
+      if (entry.difficulty === "endless" || a.endless || b.endless) {
+        return (b.distance || 0) - (a.distance || 0);
+      }
       if (a.escaped !== b.escaped) return a.escaped ? -1 : 1;
       return b.wpm - a.wpm;
     });
@@ -190,28 +313,22 @@
       this.beep(90, 0.14, "sawtooth", 0.16, 55);
     },
 
+    noiseBuffer() {
+      if (this._noise && this.ctx) return this._noise;
+      if (!this.ctx) return null;
+      const len = this.ctx.sampleRate;
+      const buffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      this._noise = buffer;
+      return buffer;
+    },
+
     startAmbience() {
       this.ensure();
-      if (!this.ctx || this.sirenNodes) return;
+      if (!this.ctx) return;
+      this.stopAmbience(true);
       const t = this.ctx.currentTime;
-
-      const siren = this.ctx.createOscillator();
-      const sirenLfo = this.ctx.createOscillator();
-      const sirenGain = this.ctx.createGain();
-      const lfoGain = this.ctx.createGain();
-      siren.type = "sine";
-      siren.frequency.value = 420;
-      sirenLfo.type = "sine";
-      sirenLfo.frequency.value = 0.28;
-      lfoGain.gain.value = 90;
-      sirenGain.gain.value = 0.025;
-      sirenLfo.connect(lfoGain);
-      lfoGain.connect(siren.frequency);
-      siren.connect(sirenGain);
-      sirenGain.connect(this.master);
-      siren.start(t);
-      sirenLfo.start(t);
-      this.sirenNodes = { siren, sirenLfo, sirenGain };
 
       const rumble = this.ctx.createOscillator();
       const rumbleGain = this.ctx.createGain();
@@ -222,6 +339,167 @@
       rumbleGain.connect(this.master);
       rumble.start(t);
       this.rumbleNodes = { rumble, rumbleGain };
+
+      this.startMusic();
+    },
+
+    startMusic() {
+      if (!this.ctx || this.music) return;
+      const t = this.ctx.currentTime;
+      const bus = this.ctx.createGain();
+      bus.gain.setValueAtTime(0.0001, t);
+      bus.gain.exponentialRampToValueAtTime(0.55, t + 0.18);
+      bus.connect(this.master);
+
+      const bassFilter = this.ctx.createBiquadFilter();
+      bassFilter.type = "lowpass";
+      bassFilter.frequency.setValueAtTime(600, t);
+      bassFilter.Q.setValueAtTime(7.2, t);
+
+      const bassGain = this.ctx.createGain();
+      bassGain.gain.value = 0.16;
+      bassFilter.connect(bassGain);
+      bassGain.connect(bus);
+
+      const bassA = this.ctx.createOscillator();
+      const bassB = this.ctx.createOscillator();
+      bassA.type = "sawtooth";
+      bassB.type = "sawtooth";
+      bassA.frequency.setValueAtTime(73.42, t);
+      bassB.frequency.setValueAtTime(73.42, t);
+      bassB.detune.setValueAtTime(8, t);
+      bassA.connect(bassFilter);
+      bassB.connect(bassFilter);
+      bassA.start(t);
+      bassB.start(t);
+
+      const warnGain = this.ctx.createGain();
+      warnGain.gain.value = 0.0001;
+      warnGain.connect(bus);
+
+      this.music = {
+        bus,
+        bassFilter,
+        bassGain,
+        bassA,
+        bassB,
+        warnGain,
+        step: 0,
+        nextTime: t + 0.04,
+        boosting: false,
+        intensity: 0,
+        notes: [73.42, 87.31, 98.0, 116.54],
+      };
+      this.scheduleMusic();
+    },
+
+    scheduleMusic() {
+      if (!this.ctx || !this.music) return;
+      const stepSec = 60 / 136 / 4;
+      const horizon = this.ctx.currentTime + 0.14;
+      while (this.music && this.music.nextTime < horizon) {
+        this.playMusicStep(this.music.step, this.music.nextTime);
+        this.music.nextTime += stepSec;
+        this.music.step = (this.music.step + 1) % 16;
+      }
+    },
+
+    playMusicStep(step, when) {
+      const m = this.music;
+      if (!m || !this.ctx) return;
+      const boost = m.boosting;
+
+      if (step % 4 === 0) this.synthKick(when);
+      if (step === 4 || step === 12) this.synthSnare(when);
+      this.synthHat(when, step % 2 === 0 ? 0.045 : 0.028);
+      if (boost) this.synthHat(when + (60 / 136 / 8), 0.03);
+
+      if (step % 4 === 0) {
+        const note = m.notes[(step / 4) | 0];
+        const freq = boost ? note * 1.059 : note;
+        m.bassA.frequency.setTargetAtTime(freq, when, 0.012);
+        m.bassB.frequency.setTargetAtTime(freq, when, 0.012);
+        m.bassGain.gain.setValueAtTime(0.2, when);
+        m.bassGain.gain.exponentialRampToValueAtTime(0.13, when + 0.18);
+      }
+
+      if (m.intensity > 0.48 && (step === 0 || step === 8)) {
+        this.synthWarn(when, m.intensity);
+      }
+    },
+
+    synthKick(when) {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(148, when);
+      osc.frequency.exponentialRampToValueAtTime(42, when + 0.11);
+      g.gain.setValueAtTime(0.62, when);
+      g.gain.exponentialRampToValueAtTime(0.001, when + 0.2);
+      osc.connect(g);
+      g.connect(this.music.bus);
+      osc.start(when);
+      osc.stop(when + 0.22);
+    },
+
+    synthSnare(when) {
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer();
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 1800;
+      bp.Q.value = 0.9;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.2, when);
+      g.gain.exponentialRampToValueAtTime(0.001, when + 0.12);
+      src.connect(bp);
+      bp.connect(g);
+      g.connect(this.music.bus);
+      src.start(when);
+      src.stop(when + 0.14);
+
+      const tone = this.ctx.createOscillator();
+      const tg = this.ctx.createGain();
+      tone.type = "triangle";
+      tone.frequency.setValueAtTime(196, when);
+      tone.frequency.exponentialRampToValueAtTime(110, when + 0.07);
+      tg.gain.setValueAtTime(0.08, when);
+      tg.gain.exponentialRampToValueAtTime(0.001, when + 0.08);
+      tone.connect(tg);
+      tg.connect(this.music.bus);
+      tone.start(when);
+      tone.stop(when + 0.09);
+    },
+
+    synthHat(when, vol) {
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer();
+      const hp = this.ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = 7200;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(vol, when);
+      g.gain.exponentialRampToValueAtTime(0.001, when + 0.03);
+      src.connect(hp);
+      hp.connect(g);
+      g.connect(this.music.bus);
+      src.start(when);
+      src.stop(when + 0.04);
+    },
+
+    synthWarn(when, intensity) {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(466, when);
+      osc.frequency.linearRampToValueAtTime(622, when + 0.16);
+      const vol = 0.012 + intensity * 0.05;
+      g.gain.setValueAtTime(vol, when);
+      g.gain.exponentialRampToValueAtTime(0.001, when + 0.2);
+      osc.connect(g);
+      g.connect(this.music.warnGain);
+      osc.start(when);
+      osc.stop(when + 0.22);
     },
 
     updateRumble(proximity) {
@@ -231,7 +509,53 @@
       this.rumbleNodes.rumble.frequency.setTargetAtTime(38 + proximity * 28, this.ctx.currentTime, 0.1);
     },
 
-    stopAmbience() {
+    updateMusic(proximity, remaining, boosting) {
+      this.scheduleMusic();
+      if (!this.music || !this.ctx) return;
+      const late = remaining <= 200 ? clamp(1 - remaining / 200, 0, 1) : 0;
+      const intensity = clamp(Math.max(proximity, late), 0, 1);
+      this.music.intensity = intensity;
+      this.music.boosting = !!boosting;
+      const cutoff = 600 + intensity * 2900;
+      const now = this.ctx.currentTime;
+      this.music.bassFilter.frequency.setTargetAtTime(cutoff, now, 0.08);
+      this.music.bassFilter.Q.setTargetAtTime(7.2 + intensity * 3.4, now, 0.1);
+      const warn = intensity > 0.42 ? (intensity - 0.42) * 0.22 : 0.0001;
+      this.music.warnGain.gain.setTargetAtTime(Math.max(0.0001, warn), now, 0.1);
+      this.music.bassA.detune.setTargetAtTime(boosting ? 70 : 0, now, 0.05);
+      this.music.bassB.detune.setTargetAtTime(boosting ? 86 : 8, now, 0.05);
+    },
+
+    teardownMusic(handle) {
+      if (!handle) return;
+      ["bassA", "bassB"].forEach((key) => {
+        try { handle[key].stop(); } catch { /* already stopped */ }
+        try { handle[key].disconnect(); } catch { /* */ }
+      });
+      ["bassFilter", "bassGain", "warnGain", "bus"].forEach((key) => {
+        try { handle[key].disconnect(); } catch { /* */ }
+      });
+    },
+
+    stopMusic(immediate) {
+      if (!this.music || !this.ctx) {
+        this.music = null;
+        return;
+      }
+      const handle = this.music;
+      this.music = null;
+      const t = this.ctx.currentTime;
+      try {
+        handle.bus.gain.cancelScheduledValues(t);
+        handle.bus.gain.setValueAtTime(Math.max(0.0001, handle.bus.gain.value), t);
+        if (immediate) handle.bus.gain.setValueAtTime(0.0001, t);
+        else handle.bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      } catch { /* */ }
+      const delay = immediate ? 0 : 240;
+      setTimeout(() => this.teardownMusic(handle), delay);
+    },
+
+    stopAmbience(immediate) {
       const stop = (nodes) => {
         if (!nodes) return;
         Object.values(nodes).forEach((n) => {
@@ -243,6 +567,7 @@
           }
         });
       };
+      this.stopMusic(immediate);
       stop(this.sirenNodes);
       stop(this.rumbleNodes);
       this.sirenNodes = null;
@@ -266,13 +591,138 @@
   /* Typing                                                              */
   /* ------------------------------------------------------------------ */
 
-  function tokenize(text) {
-    return text.trim().split(/\s+/).filter(Boolean);
-  }
+  const TextGen = {
+    pick(list, used) {
+      const pool = list.filter((w) => w && !used.has(w));
+      const src = pool.length ? pool : list;
+      const word = src[Math.floor(Math.random() * src.length)];
+      if (word) used.add(word);
+      return word || "system";
+    },
+
+    cap(text) {
+      const s = String(text || "").trim();
+      if (!s) return "";
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    },
+
+    bare(word) {
+      return String(word || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    },
+
+    thematicSentence() {
+      const used = new Set();
+      const n = () => this.pick(LEX.nouns, used);
+      const v = () => this.pick(LEX.verbs, used);
+      const a = () => this.pick(LEX.adjectives, used);
+      const c = () => this.pick(LEX.connectors, used);
+      const builders = [
+        () => `Warning: the ${n()} is ${a()}, ${v()} the ${n()} immediately.`,
+        () => `Emergency protocol engaged as ${n()} begins to ${v()} in the lower ${n()}.`,
+        () => `Override the ${a()} ${n()} and run toward the final ${n()}.`,
+        () => `The ${a()} ${n()} will ${v()} ${c()}.`,
+        () => `${this.cap(v())} the ${n()} before the ${a()} ${n()} can ${v()}.`,
+        () => `Sensors report a ${a()} ${n()} near the ${n()}, ${c()}.`,
+        () => `Do not ${v()} the ${n()}. ${this.cap(c())}.`,
+        () => `Manual ${n()} failed. ${this.cap(v())} the ${a()} ${n()} now.`,
+        () => `A ${a()} shadow crosses the ${n()} as the ${n()} starts to ${v()}.`,
+        () => `${this.cap(n())} status is ${a()}. ${this.cap(v())} power and ${c()}.`,
+        () => `Keep moving through the ${a()} ${n()} while the ${n()} continues to ${v()}.`,
+        () => `If the ${n()} cannot ${v()}, ${c()}.`,
+      ];
+      return builders[Math.floor(Math.random() * builders.length)]();
+    },
+
+    commonSentence() {
+      const len = 8 + Math.floor(Math.random() * 7);
+      const words = [];
+      let last = "";
+      for (let i = 0; i < len; i++) {
+        let next = "";
+        for (let t = 0; t < 10; t++) {
+          next = COMMON_WORDS[Math.floor(Math.random() * COMMON_WORDS.length)];
+          if (next && next !== last) break;
+        }
+        if (!next || next === last) continue;
+        words.push(next);
+        last = next;
+      }
+      if (words.length < 4) words.push("the", "next", "move", "now");
+      words[0] = this.cap(words[0]);
+      words[words.length - 1] += ".";
+      return words.join(" ");
+    },
+
+    tokenize(sentence) {
+      return String(sentence || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .split(" ")
+        .map((w) => w.trim())
+        .filter((w) => w.length > 0);
+    },
+
+    codeSentence() {
+      const tokens = [
+        "if(err)", "return;", "lock.seal();", "x=42;", "arr[0]", "foo.bar",
+        "#ff0033", "while(true)", "catch(e)", "n+=1;", "authToken", "getStatus()",
+        "setOverride", "coreTemp", "userId", "breachMap", "===", "=>{ }",
+        "purgeCoolant()", "hashKey", "sysRef", "gateLock", "null", "true",
+        "const", "let", "await", "try{", "}finally", "0x7f", "idx++",
+      ];
+      const len = 6 + Math.floor(Math.random() * 5);
+      const out = [];
+      let last = "";
+      for (let i = 0; i < len; i++) {
+        let next = tokens[Math.floor(Math.random() * tokens.length)];
+        if (next === last) continue;
+        out.push(next);
+        last = next;
+      }
+      return out.join(" ");
+    },
+
+    nextSentence() {
+      if (this.mode === "code") return this.codeSentence();
+      if (this.mode === "lore") return this.thematicSentence();
+      if (this.mode === "standard") return this.commonSentence();
+      return Math.random() < 0.68 ? this.thematicSentence() : this.commonSentence();
+    },
+
+    styleWord(word) {
+      if (!word) return "";
+      if (this.mode === "code") {
+        return this.punctuation ? word : word.replace(/[^a-zA-Z0-9]/g, "") || word;
+      }
+      if (!this.punctuation) {
+        return word.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      }
+      return word;
+    },
+
+    generate(count, previous) {
+      const out = [];
+      let last = this.bare(previous);
+      let guard = 0;
+      while (out.length < count && guard < count * 8) {
+        guard += 1;
+        const chunk = this.tokenize(this.nextSentence());
+        for (const raw of chunk) {
+          const word = this.styleWord(raw);
+          if (!word) continue;
+          const key = this.bare(word);
+          if (!key || key === last) continue;
+          out.push(word);
+          last = key;
+          if (out.length >= count) break;
+        }
+      }
+      return out;
+    },
+  };
 
   function createTyping() {
     return {
-      bag: [],
       words: [],
       states: [],
       extras: [],
@@ -287,35 +737,50 @@
       boostLeft: 0,
       stallLeft: 0,
       startedAt: 0,
+      stallSec: STALL_SEC,
       dirty: [0],
 
-      refillBag() {
-        this.bag = PASSAGES.map((_, i) => i);
-        for (let i = this.bag.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
+      armTimer() {
+        if (!this.startedAt) this.startedAt = performance.now();
+      },
+
+      elapsedSeconds() {
+        if (!this.startedAt) return 0;
+        return (performance.now() - this.startedAt) / 1000;
+      },
+
+      uncorrectedErrors() {
+        let n = 0;
+        const last = Math.min(this.wordIndex, this.states.length - 1);
+        for (let i = 0; i <= last; i++) {
+          for (const s of this.states[i] || []) {
+            if (s === "incorrect" || s === "missed") n += 1;
+          }
+          n += (this.extras[i] || "").length;
         }
+        return n;
       },
 
       pushWords(list) {
         list.forEach((word) => {
+          if (!word) return;
           this.words.push(word);
           this.states.push(Array(word.length).fill(""));
           this.extras.push("");
         });
       },
 
-      appendPassage() {
-        if (this.bag.length === 0) this.refillBag();
-        this.pushWords(tokenize(PASSAGES[this.bag.pop()]));
-      },
-
       ensureWords() {
-        while (this.words.length - this.wordIndex < 48) this.appendPassage();
+        while (this.words.length - this.wordIndex < 40) {
+          const last = this.words[this.words.length - 1] || "";
+          this.pushWords(TextGen.generate(18, last));
+        }
       },
 
-      start() {
-        this.bag = [];
+      start(opts) {
+        const options = opts || {};
+        TextGen.mode = options.textMode || "mix";
+        TextGen.punctuation = options.punctuation !== false;
         this.words = [];
         this.states = [];
         this.extras = [];
@@ -329,17 +794,34 @@
         this.adrenaline = 0;
         this.boostLeft = 0;
         this.stallLeft = 0;
-        this.startedAt = performance.now();
+        this.startedAt = 0;
+        this.stallSec = options.stall != null ? options.stall : STALL_SEC;
+        this.pushWords(TextGen.generate(45, ""));
         this.ensureWords();
         this.dirty = [0];
       },
 
-      elapsedMin() {
-        return Math.max(1 / 60, (performance.now() - this.startedAt) / 60000);
+      elapsedMin(minSeconds) {
+        const sec = Math.max(this.elapsedSeconds(), minSeconds || 0);
+        return sec / 60;
+      },
+
+      rawWpm() {
+        const minutes = this.elapsedMin(1);
+        if (!this.startedAt) return 0;
+        return (this.totalKeys / 5) / minutes;
       },
 
       wpm() {
-        return (this.correctKeys / 5) / this.elapsedMin();
+        const minutes = this.elapsedMin(1);
+        if (!this.startedAt) return 0;
+        return Math.max(0, (this.correctKeys / 5) - this.uncorrectedErrors()) / minutes;
+      },
+
+      liveWpm() {
+        if (!this.startedAt || this.elapsedSeconds() < 1) return null;
+        const minutes = this.elapsedSeconds() / 60;
+        return Math.max(0, (this.correctKeys / 5) - this.uncorrectedErrors()) / minutes;
       },
 
       accuracy() {
@@ -375,7 +857,7 @@
         this.errored = true;
         this.streak = 0;
         if (this.boostLeft <= 0) this.adrenaline = 0;
-        this.stallLeft = STALL_SEC;
+        this.stallLeft = this.stallSec;
       },
 
       finishWord() {
@@ -421,6 +903,7 @@
       typeChar(key, now) {
         const word = this.currentWord();
         if (!word) return null;
+        this.armTimer();
         const i = this.wordIndex;
         this.totalKeys += 1;
 
@@ -448,6 +931,7 @@
 
       space() {
         if (this.letterIndex === 0 && !(this.extras[this.wordIndex] || "")) return null;
+        this.armTimer();
         if (this.letterIndex < this.currentWord().length) this.penalize();
         return this.finishWord();
       },
@@ -559,6 +1043,12 @@
       return Number.isFinite(n) && n > 0 ? n : 42;
     },
 
+    visibleLines() {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue("--visible-lines");
+      const n = parseInt(raw, 10);
+      return n === 2 ? 2 : 3;
+    },
+
     sync(typing, instant) {
       this.appendNewWords(typing);
       const dirty = typing.dirty.splice(0);
@@ -585,7 +1075,8 @@
       const y = anchor.offsetTop;
       const lh = this.lineHeight();
       const line = Math.round(y / lh);
-      const target = line >= 1 ? (line - 1) * lh : 0;
+      const shown = this.visibleLines();
+      const target = shown <= 2 ? line * lh : (line >= 1 ? (line - 1) * lh : 0);
       if (instant) {
         this.caret.style.transition = "none";
         this.list.style.transition = "none";
@@ -611,56 +1102,76 @@
   /* Race                                                                */
   /* ------------------------------------------------------------------ */
 
-  function createRace(diff) {
-    const targetCps = (diff.targetWpm * 5) / 60;
-    const finishTime = diff.doorTime * 0.82;
-    const targetSpeed = TRACK / finishTime;
-    const monsterBase = TRACK / (diff.doorTime * diff.monsterPace);
+  function createRace(cfg) {
+    const track = cfg.endless ? Infinity : (cfg.track || TRACK);
+    const refTrack = Number.isFinite(track) ? track : 1000;
+    const refTime = cfg.doorTime > 0 ? cfg.doorTime * 0.82 : 80;
+    const targetCps = (cfg.targetWpm * 5) / 60;
+    const targetSpeed = refTrack / refTime;
 
     return {
-      diff,
+      diff: cfg,
+      track,
       targetCps,
       targetSpeed,
-      monsterBase,
+      peakWpm: 0,
       player: 0,
-      monster: -diff.startGap,
+      monster: cfg.monsterOff ? -4000 : -cfg.startGap,
       speed: 0,
       doorOpen: 1,
       elapsed: 0,
       result: null,
+      lastAccelMark: 0,
+
+      huntWpm(typing) {
+        const live = typing.liveWpm();
+        if (live != null && live > this.peakWpm) this.peakWpm = live;
+        let wpm = cfg.monsterWpm;
+        if (cfg.adaptive) wpm = Math.max(wpm, this.peakWpm * (cfg.adaptiveMult || 1.05));
+        if (cfg.endless) wpm += Math.floor(this.player / 100) * 2;
+        return wpm;
+      },
 
       update(dt, typing, now) {
         if (this.result) return;
-
         this.elapsed += dt;
-        this.doorOpen = clamp(1 - this.elapsed / this.diff.doorTime, 0, 1);
+
+        if (cfg.doorOff || !cfg.doorTime) {
+          this.doorOpen = 1;
+        } else {
+          let rate = 1 / cfg.doorTime;
+          if (cfg.doorAccelFinal && Number.isFinite(this.track) && this.player > this.track - 300) {
+            rate *= 1.85;
+          }
+          this.doorOpen = clamp(this.doorOpen - rate * dt, 0, 1);
+        }
 
         const cps = typing.recentCps(now);
         let desired = (cps / this.targetCps) * this.targetSpeed;
-        desired = clamp(desired, 0, this.targetSpeed * 2.2);
-
+        desired = clamp(desired, 0, this.targetSpeed * 2.4);
         if (typing.stallLeft > 0) desired = this.targetSpeed * 0.02;
         if (typing.boostLeft > 0) desired *= ADRENALINE_MULT;
-
         const follow = typing.stallLeft > 0 ? 16 : 6.8;
         this.speed = lerp(this.speed, desired, 1 - Math.exp(-follow * dt));
         this.player += this.speed * dt;
 
-        const gap = this.player - this.monster;
-        let mSpeed = this.monsterBase;
-        if (gap > 240) mSpeed *= 1.16;
-        else if (gap > 160) mSpeed *= 1.06;
-        if (gap < 70) mSpeed *= this.diff.closeAccel;
-        if (this.speed < this.targetSpeed * 0.25) mSpeed *= 1.05;
-        this.monster += mSpeed * dt;
+        if (!cfg.monsterOff) {
+          const hunt = this.huntWpm(typing);
+          let mSpeed = this.targetSpeed * (hunt / Math.max(cfg.targetWpm, 1)) * 0.94;
+          const gap = this.player - this.monster;
+          if (gap > 240) mSpeed *= 1.12;
+          else if (gap < 70) mSpeed *= cfg.closeAccel || 1;
+          this.monster += mSpeed * dt;
+        }
 
-        if (this.player >= TRACK && this.doorOpen > 0) {
-          this.player = TRACK;
+        const finite = Number.isFinite(this.track);
+        if (finite && this.player >= this.track && this.doorOpen > 0) {
+          this.player = this.track;
           this.result = "win";
-        } else if (this.monster >= this.player) {
+        } else if (!cfg.monsterOff && this.monster >= this.player) {
           this.monster = this.player;
           this.result = "lose-catch";
-        } else if (this.doorOpen <= 0 && this.player < TRACK) {
+        } else if (!cfg.doorOff && this.doorOpen <= 0 && (!finite || this.player < this.track)) {
           this.doorOpen = 0;
           this.result = "lose-door";
         }
@@ -768,7 +1279,9 @@
 
       this.drawMonster(ctx, monsterX, playerY + 8, monsterScale, prox);
       this.drawPlayer(ctx, playerX, playerY, race.speed, typing.boostLeft > 0, unit);
-      this.drawDoor(ctx, w, h, horizon, race.doorOpen);
+      if (!race.diff.doorOff && !race.diff.endless) {
+        this.drawDoor(ctx, w, h, horizon, race.doorOpen);
+      }
       this.updateParticles(ctx, dt);
       if (typing.boostLeft > 0) this.drawSpeedLines(ctx, w, h);
 
@@ -1146,7 +1659,7 @@
     result: $("result-modal"),
     resultPanel: document.querySelector(".result-panel"),
     scores: $("high-scores"),
-    input: $("hidden-input"),
+    input: $("mobile-input"),
     canvas: $("game-canvas"),
     wpm: $("stat-wpm"),
     acc: $("stat-acc"),
@@ -1170,28 +1683,80 @@
     resWpm: $("res-wpm"),
     resAcc: $("res-acc"),
     resTime: $("res-time"),
-    resDiff: $("res-diff"),
+    resDist: $("res-dist"),
+    resSettings: $("res-settings"),
     resRecord: $("result-record"),
+    endlessBtn: $("btn-endless"),
+    labBtn: $("btn-lab"),
+    labPanel: $("lab-panel"),
+    labStart: $("btn-lab-start"),
+    labMonster: $("lab-monster"),
+    labMonsterVal: $("lab-monster-val"),
+    labMonsterOff: $("lab-monster-off"),
+    labDistance: $("lab-distance"),
+    labDoor: $("lab-door"),
+    labStall: $("lab-stall"),
+    labStallVal: $("lab-stall-val"),
+    labText: $("lab-text"),
+    labPunct: $("lab-punct"),
   };
+
+  function isTouchDevice() {
+    return window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+  }
 
   const Game = {
     state: "start",
     typing: createTyping(),
     race: null,
+    settings: loadSettings(),
     raf: 0,
     lastTs: 0,
     hudAcc: 0,
+    handledByKey: false,
 
     boot() {
       Renderer.init(els.canvas);
       WordsView.mount();
+      this.applySettingsToForm();
       this.renderScores();
       this.syncMuteButtons();
+      this.syncViewport();
 
       document.getElementById("difficulty-grid").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-diff]");
         if (!btn) return;
-        this.start(btn.dataset.diff);
+        this.settings.lastPreset = btn.dataset.diff;
+        saveSettings(this.settings);
+        this.start(this.configFromPreset(btn.dataset.diff));
+      });
+
+      els.endlessBtn.addEventListener("click", () => {
+        this.settings.endless = !this.settings.endless;
+        saveSettings(this.settings);
+        this.syncModeButtons();
+      });
+      els.labBtn.addEventListener("click", () => {
+        this.settings.labOpen = !this.settings.labOpen;
+        saveSettings(this.settings);
+        this.syncModeButtons();
+      });
+      els.labStart.addEventListener("click", () => {
+        this.collectLab();
+        saveSettings(this.settings);
+        this.start(this.configFromLab());
+      });
+      ["labMonster", "labMonsterOff", "labDistance", "labDoor", "labStall", "labText", "labPunct"].forEach((key) => {
+        els[key].addEventListener("input", () => {
+          this.collectLab();
+          this.syncLabLabels();
+          saveSettings(this.settings);
+        });
+      });
+      els.labDistance.addEventListener("change", () => {
+        if (els.labDistance.value === "endless") els.labDoor.value = "off";
+        this.collectLab();
+        saveSettings(this.settings);
       });
 
       els.muteStart.addEventListener("click", () => this.toggleMute());
@@ -1199,25 +1764,154 @@
       els.again.addEventListener("click", () => this.toStart());
 
       els.input.addEventListener("keydown", (e) => this.onKey(e));
-      els.input.addEventListener("input", () => this.onTextInput());
-      els.input.addEventListener("blur", () => {
-        if (this.state === "playing") {
-          setTimeout(() => els.input.focus(), 0);
-        }
-      });
-      document.getElementById("typing-panel").addEventListener("mousedown", () => {
-        if (this.state === "playing") els.input.focus();
-      });
+      els.input.addEventListener("beforeinput", (e) => this.onBeforeInput(e));
+      els.input.addEventListener("input", (e) => this.onTextInput(e));
+      els.input.addEventListener("blur", () => this.onInputBlur());
 
-      window.addEventListener("resize", () => {
+      const focusInput = (e) => {
+        if (this.state !== "playing") return;
+        this.focusInput();
+        if (e) e.preventDefault();
+      };
+      document.getElementById("typing-panel").addEventListener("pointerdown", focusInput);
+      document.getElementById("words-container").addEventListener("pointerdown", focusInput);
+      document.getElementById("canvas-wrap").addEventListener("pointerdown", focusInput);
+
+      els.game.addEventListener("touchmove", (e) => {
+        if (this.state === "playing") e.preventDefault();
+      }, { passive: false });
+
+      const onViewport = () => {
+        this.syncViewport();
         Renderer.resize();
         if (this.state === "playing") WordsView.sync(this.typing, true);
-      });
+      };
+      window.addEventListener("resize", onViewport);
+      window.visualViewport?.addEventListener("resize", onViewport);
+      window.visualViewport?.addEventListener("scroll", onViewport);
+
       window.addEventListener("keydown", (e) => {
         if (this.state !== "start") return;
-        const map = { 1: "scout", 2: "operative", 3: "nightmare" };
-        if (map[e.key]) this.start(map[e.key]);
+        const map = { 1: "recruit", 2: "scout", 3: "operative", 4: "nightmare", 5: "apex" };
+        if (map[e.key]) this.start(this.configFromPreset(map[e.key]));
       });
+    },
+
+    applySettingsToForm() {
+      const lab = this.settings.lab;
+      els.labMonster.value = lab.monsterWpm;
+      els.labMonsterOff.checked = lab.monsterOff;
+      els.labDistance.value = lab.distance;
+      els.labDoor.value = lab.door;
+      els.labStall.value = lab.stall;
+      els.labText.value = lab.textMode;
+      els.labPunct.checked = lab.punctuation;
+      this.syncLabLabels();
+      this.syncModeButtons();
+      this.markPreset(this.settings.lastPreset);
+    },
+
+    syncLabLabels() {
+      els.labMonsterVal.textContent = els.labMonsterOff.checked
+        ? "OFF"
+        : `${els.labMonster.value} WPM`;
+      els.labStallVal.textContent = `${Number(els.labStall.value).toFixed(1)}s`;
+    },
+
+    syncModeButtons() {
+      els.endlessBtn.setAttribute("aria-pressed", this.settings.endless ? "true" : "false");
+      els.labBtn.setAttribute("aria-pressed", this.settings.labOpen ? "true" : "false");
+      els.labBtn.setAttribute("aria-expanded", this.settings.labOpen ? "true" : "false");
+      els.labPanel.hidden = !this.settings.labOpen;
+    },
+
+    markPreset(id) {
+      document.querySelectorAll("[data-diff]").forEach((btn) => {
+        btn.classList.toggle("selected", btn.dataset.diff === id);
+      });
+    },
+
+    collectLab() {
+      this.settings.lab = {
+        monsterWpm: Number(els.labMonster.value),
+        monsterOff: els.labMonsterOff.checked,
+        distance: els.labDistance.value,
+        door: els.labDoor.value,
+        stall: Number(els.labStall.value),
+        textMode: els.labText.value,
+        punctuation: els.labPunct.checked,
+      };
+    },
+
+    configFromPreset(id) {
+      const base = DIFFICULTIES[id];
+      if (!base) return null;
+      this.markPreset(id);
+      this.settings.lastPreset = id;
+      saveSettings(this.settings);
+      return {
+        ...base,
+        track: TRACK,
+        endless: this.settings.endless,
+        doorOff: this.settings.endless,
+        doorTime: this.settings.endless ? 0 : base.doorTime,
+        textMode: "mix",
+        punctuation: true,
+        scoreKey: this.settings.endless ? "endless" : id,
+      };
+    },
+
+    configFromLab() {
+      const lab = this.settings.lab;
+      const endless = lab.distance === "endless";
+      const track = endless ? Infinity : Number(lab.distance);
+      const doorOff = lab.door === "off" || endless;
+      const scale = DOOR_SCALE[lab.door] || 1;
+      const ref = Number.isFinite(track) ? track : 1000;
+      return {
+        id: "custom",
+        name: "Laboratory",
+        tag: "Custom",
+        targetWpm: lab.monsterOff ? 50 : Math.max(30, lab.monsterWpm),
+        monsterWpm: lab.monsterWpm,
+        monsterOff: lab.monsterOff,
+        startGap: 120,
+        closeAccel: 1.08,
+        stall: lab.stall,
+        track,
+        endless,
+        doorOff,
+        doorTime: doorOff ? 0 : (ref / 1000) * 80 * scale,
+        doorAccelFinal: lab.door === "blitz",
+        textMode: lab.textMode,
+        punctuation: lab.punctuation,
+        scoreKey: endless ? "endless" : "custom",
+      };
+    },
+
+    syncViewport() {
+      const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty("--app-h", `${Math.round(h)}px`);
+    },
+
+    focusInput() {
+      els.input.focus({ preventScroll: true });
+      els.hint.classList.remove("touch-needed");
+      els.hint.textContent = isTouchDevice()
+        ? "Tap the text to keep the keyboard open"
+        : "Type to run · Space next word · Backspace corrects · Shift boosts";
+    },
+
+    onInputBlur() {
+      if (this.state !== "playing") return;
+      if (isTouchDevice()) {
+        els.hint.classList.add("touch-needed");
+        els.hint.textContent = "Tap here to open keyboard";
+        return;
+      }
+      setTimeout(() => {
+        if (this.state === "playing") els.input.focus({ preventScroll: true });
+      }, 0);
     },
 
     toggleMute() {
@@ -1234,25 +1928,33 @@
 
     renderScores() {
       const scores = loadScores();
-      els.scores.innerHTML = Object.keys(DIFFICULTIES).map((key) => {
-        const d = DIFFICULTIES[key];
+      const blocks = [
+        ...Object.keys(DIFFICULTIES).map((key) => ({ key, name: DIFFICULTIES[key].name })),
+        { key: "endless", name: "Endless" },
+        { key: "custom", name: "Laboratory" },
+      ];
+      els.scores.innerHTML = blocks.map(({ key, name }) => {
         const rows = scores[key] || [];
         const items = rows.length
-          ? rows.map((r) => `<li>${r.escaped ? "ESC" : "FAIL"} ${r.wpm.toFixed(0)} WPM · ${r.accuracy.toFixed(0)}%</li>`).join("")
+          ? rows.map((r) => {
+            if (key === "endless" || r.endless) {
+              return `<li>${Math.round(r.distance || 0)}m · ${r.wpm.toFixed(0)} WPM</li>`;
+            }
+            return `<li>${r.escaped ? "ESC" : "FAIL"} ${r.wpm.toFixed(0)} WPM · ${r.accuracy.toFixed(0)}%</li>`;
+          }).join("")
           : "<li>No runs yet</li>";
-        return `<div class="score-col"><h3>${d.name}</h3><ol>${items}</ol></div>`;
+        return `<div class="score-col"><h3>${name}</h3><ol>${items}</ol></div>`;
       }).join("");
     },
 
-    start(diffId) {
-      const diff = DIFFICULTIES[diffId];
-      if (!diff) return;
+    start(cfg) {
+      if (!cfg) return;
       AudioSystem.resume();
       AudioSystem.stopAmbience();
       AudioSystem.startAmbience();
 
-      this.typing.start();
-      this.race = createRace(diff);
+      this.typing.start(cfg);
+      this.race = createRace(cfg);
       this.state = "playing";
       this.lastTs = 0;
       this.hudAcc = 0;
@@ -1271,8 +1973,7 @@
         WordsView.sync(this.typing, true);
       });
       els.input.value = "";
-      els.input.focus();
-      els.hint.textContent = "Type to run · Space next word · Backspace corrects · Shift boosts";
+      this.focusInput();
 
       cancelAnimationFrame(this.raf);
       this.raf = requestAnimationFrame((t) => this.loop(t));
@@ -1295,6 +1996,7 @@
       if (result === "ok" || result === "boost") AudioSystem.click();
       else if (result === "err" || result === "extra") AudioSystem.buzz();
       WordsView.sync(this.typing);
+      this.updateHud();
       return true;
     },
 
@@ -1308,24 +2010,63 @@
       const tracked = e.key === "Backspace" || e.key === " " || e.key === "Shift" || e.key.length === 1;
       if (!tracked) return;
       e.preventDefault();
+      this.handledByKey = true;
       this.applyKey(e.key);
+      els.input.value = "";
+      requestAnimationFrame(() => { this.handledByKey = false; });
     },
 
-    onTextInput() {
+    onBeforeInput(e) {
+      if (this.state !== "playing" || this.handledByKey) return;
+      const type = e.inputType || "";
+      if (type === "deleteContentBackward" || type === "deleteContentForward") {
+        e.preventDefault();
+        this.applyKey("Backspace");
+        els.input.value = "";
+        return;
+      }
+      if (type === "insertLineBreak" || type === "insertParagraph") {
+        e.preventDefault();
+        this.applyKey(" ");
+        els.input.value = "";
+        return;
+      }
+      if (type === "insertText" && e.data) {
+        e.preventDefault();
+        for (const ch of e.data) this.applyKey(ch === "\n" ? " " : ch);
+        els.input.value = "";
+      }
+    },
+
+    onTextInput(e) {
       const val = els.input.value;
       els.input.value = "";
-      if (this.state !== "playing" || !val) return;
-      for (const ch of val) this.applyKey(ch);
+      if (this.state !== "playing") return;
+      if (this.handledByKey) {
+        this.handledByKey = false;
+        return;
+      }
+      if (e && e.inputType === "deleteContentBackward") {
+        this.applyKey("Backspace");
+        return;
+      }
+      if (!val) return;
+      for (const ch of val) this.applyKey(ch === "\n" ? " " : ch);
     },
 
     updateHud() {
       const t = this.typing;
       const r = this.race;
-      els.wpm.textContent = Math.round(t.wpm());
+      const live = t.liveWpm();
+      els.wpm.textContent = live == null ? "--" : String(Math.round(live));
       els.acc.textContent = `${Math.round(t.accuracy())}%`;
       els.streak.textContent = String(t.streak);
-      els.dist.textContent = `${Math.floor(clamp(r.player, 0, TRACK))}m`;
-      els.door.textContent = `${Math.round(r.doorOpen * 100)}%`;
+      els.dist.textContent = `${Math.floor(Math.max(0, r.player))}m`;
+      els.door.textContent = r.diff.endless
+        ? "ENDLESS"
+        : r.diff.doorOff
+          ? "OFF"
+          : `${Math.round(r.doorOpen * 100)}%`;
 
       const fill = t.boostLeft > 0
         ? (t.boostLeft / ADRENALINE_SEC) * 100
@@ -1339,11 +2080,12 @@
           ? "SHIFT / AUTO"
           : `${t.adrenaline}/${ADRENALINE_WORDS} WORDS`;
 
-      const mapMin = -180;
-      const mapSpan = TRACK - mapMin;
-      const mapPct = (pos) => `${clamp((pos - mapMin) / mapSpan, 0, 1) * 100}%`;
+      const mapMin = r.diff.endless ? Math.max(0, r.player - 750) : -180;
+      const mapSpan = r.diff.endless ? 1000 : (Number.isFinite(r.track) ? r.track : TRACK) - mapMin;
+      const mapPct = (pos) => `${clamp((pos - mapMin) / Math.max(mapSpan, 1), 0, 1) * 100}%`;
       els.mapPlayer.style.left = mapPct(r.player);
       els.mapMonster.style.left = mapPct(r.monster);
+      els.mapDoor.style.display = r.diff.doorOff || r.diff.endless ? "none" : "block";
       els.mapDoor.style.left = "100%";
       els.mapGap.textContent = `GAP ${Math.max(0, Math.round(r.player - r.monster))}m`;
     },
@@ -1359,13 +2101,12 @@
       Renderer.draw(this.race, this.typing, dt);
 
       const gap = this.race.player - this.race.monster;
-      AudioSystem.updateRumble(clamp(1 - gap / 200, 0, 1));
+      const proximity = clamp(1 - gap / 200, 0, 1);
+      AudioSystem.updateRumble(proximity);
+      const remain = Number.isFinite(this.race.track) ? this.race.track - this.race.player : 9999;
+      AudioSystem.updateMusic(proximity, remain, this.typing.boostLeft > 0);
 
-      this.hudAcc += dt;
-      if (this.hudAcc > 0.08) {
-        this.hudAcc = 0;
-        this.updateHud();
-      }
+      this.updateHud();
 
       if (this.race.result) {
         this.finish(this.race.result);
@@ -1381,12 +2122,15 @@
       if (result === "win") AudioSystem.victory();
       else AudioSystem.slam();
 
+      const cfg = this.race.diff;
       const escaped = result === "win";
       const entry = {
-        difficulty: this.race.diff.id,
+        difficulty: cfg.scoreKey || cfg.id,
         wpm: this.typing.wpm(),
         accuracy: this.typing.accuracy(),
         time: this.race.elapsed,
+        distance: this.race.player,
+        endless: !!cfg.endless,
         escaped,
         at: Date.now(),
       };
@@ -1394,19 +2138,28 @@
 
       els.resultPanel.classList.toggle("win", escaped);
       els.resultPanel.classList.toggle("lose", !escaped);
-      els.resEye.textContent = escaped ? "GATE THETA // OPEN" : "SIGNAL LOST";
-      els.resTitle.textContent = escaped ? "EXTRACTED" : result === "lose-door" ? "DOOR SEALED" : "CAUGHT";
-      els.resCopy.textContent = escaped
-        ? "You crossed the threshold as the clamps bit down. Experiment-09 hits the far side of the slab. You are out."
-        : result === "lose-door"
-          ? "The blast door sealed with you still in the corridor. The rumble is the last thing on the tape."
-          : "Experiment-09 closed the gap. The logs end in static and a wet impact.";
+      els.resEye.textContent = cfg.endless
+        ? "SURVIVAL LOG"
+        : escaped ? "GATE THETA // OPEN" : "SIGNAL LOST";
+      els.resTitle.textContent = cfg.endless
+        ? "RUN ENDED"
+        : escaped ? "EXTRACTED" : result === "lose-door" ? "DOOR SEALED" : "CAUGHT";
+      els.resCopy.textContent = cfg.endless
+        ? `You lasted ${Math.round(this.race.player)}m before the hunt closed. Distance is the only score that matters out here.`
+        : escaped
+          ? "You crossed the threshold as the clamps bit down. Experiment-09 hits the far side of the slab. You are out."
+          : result === "lose-door"
+            ? "The blast door sealed with you still in the corridor. The rumble is the last thing on the tape."
+            : "Experiment-09 closed the gap. The logs end in static and a wet impact.";
       els.resWpm.textContent = Math.round(entry.wpm);
       els.resAcc.textContent = `${Math.round(entry.accuracy)}%`;
       els.resTime.textContent = formatTime(entry.time);
-      els.resDiff.textContent = this.race.diff.name;
+      els.resDist.textContent = `${Math.round(this.race.player)}m`;
+      const hunt = cfg.monsterOff ? "hunt off" : `${cfg.monsterWpm} WPM hunt`;
+      const door = cfg.doorOff || cfg.endless ? "door off" : `${Math.round(cfg.doorTime)}s door`;
+      els.resSettings.textContent = `${cfg.name}${cfg.endless ? " · Endless" : ""} · ${hunt} · ${door} · stall ${cfg.stall.toFixed(1)}s · ${cfg.textMode || "mix"} text`;
       els.resRecord.textContent = rank > 0 && rank <= 5
-        ? `Logged as #${rank} on the ${this.race.diff.name} board.`
+        ? `Logged as #${rank} on the ${cfg.endless ? "Endless" : cfg.name} board.`
         : "Run recorded. Not a top-five mark.";
 
       els.result.hidden = false;
