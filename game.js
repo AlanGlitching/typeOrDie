@@ -8,7 +8,7 @@
   const STALL_SEC = 0.4;
   const ADRENALINE_WORDS = 5;
   const ADRENALINE_SEC = 3;
-  const ADRENALINE_MULT = 1.8;
+  const ADRENALINE_MULT = 1.28;
 
   const LEX = {
     nouns: [
@@ -76,59 +76,76 @@
       id: "recruit",
       name: "Recruit",
       tag: "Casual",
-      targetWpm: 35,
-      monsterWpm: 35,
-      doorTime: 120,
-      startGap: 200,
-      closeAccel: 1.02,
-      stall: 0.2,
+      targetWpm: 40,
+      monsterWpm: 44,
+      doorTime: 96,
+      startGap: 180,
+      closeAccel: 1.08,
+      stall: 0.28,
+      gapCatchup: 1.08,
     },
     scout: {
       id: "scout",
       name: "Scout",
       tag: "Standard",
-      targetWpm: 50,
-      monsterWpm: 50,
-      doorTime: 80,
-      startGap: 190,
-      closeAccel: 1.06,
-      stall: 0.3,
+      targetWpm: 55,
+      monsterWpm: 62,
+      doorTime: 68,
+      startGap: 175,
+      closeAccel: 1.12,
+      stall: 0.38,
+      doorAccelFinal: true,
+      gapCatchup: 1.1,
+      huntDrive: 1.04,
     },
     operative: {
       id: "operative",
       name: "Operative",
       tag: "Challenging",
-      targetWpm: 70,
-      monsterWpm: 70,
-      doorTime: 64,
-      startGap: 185,
-      closeAccel: 1.1,
-      stall: 0.4,
+      targetWpm: 75,
+      monsterWpm: 84,
+      doorTime: 50,
+      startGap: 170,
+      closeAccel: 1.18,
+      stall: 0.5,
       doorAccelFinal: true,
+      gapCatchup: 1.12,
+      huntDrive: 1.06,
+      wakeSec: 1.15,
     },
     nightmare: {
       id: "nightmare",
       name: "Nightmare",
       tag: "Hardcore",
-      targetWpm: 90,
-      monsterWpm: 90,
-      doorTime: 50,
-      startGap: 180,
-      closeAccel: 1.16,
-      stall: 0.5,
+      targetWpm: 95,
+      monsterWpm: 108,
+      doorTime: 40,
+      startGap: 165,
+      closeAccel: 1.24,
+      stall: 0.7,
+      doorAccelFinal: true,
+      gapCatchup: 1.14,
+      huntDrive: 1.08,
+      wakeSec: 1.0,
+      wakeRate: 0.55,
     },
     apex: {
       id: "apex",
       name: "Apex Predator",
       tag: "Insane",
-      targetWpm: 90,
-      monsterWpm: 70,
-      doorTime: 46,
-      startGap: 180,
-      closeAccel: 1.2,
+      targetWpm: 100,
+      monsterWpm: 82,
+      doorTime: 36,
+      startGap: 160,
+      closeAccel: 1.28,
       stall: 1,
       adaptive: true,
-      adaptiveMult: 1.05,
+      adaptiveMult: 1.08,
+      doorAccelFinal: true,
+      gapCatchup: 1.16,
+      huntDrive: 1.05,
+      wakeSec: 0.9,
+      wakeRate: 0.6,
     },
   };
 
@@ -1125,7 +1142,7 @@
       targetSpeed,
       peakWpm: 0,
       player: 0,
-      monster: cfg.monsterOff ? -4000 : -Math.max(180, cfg.startGap || 180),
+      monster: cfg.monsterOff ? -4000 : -Math.max(160, cfg.startGap || 160),
       speed: 0,
       doorOpen: 1,
       elapsed: 0,
@@ -1138,9 +1155,9 @@
           this.speed *= 0.52;
           return;
         }
-        this.speed += this.targetSpeed * 0.34;
-        this.speed = clamp(this.speed, this.targetSpeed * 0.38, this.targetSpeed * 2.8);
-        this.player += Math.max(2.4, this.targetSpeed * 0.055);
+        this.speed += this.targetSpeed * 0.2;
+        this.speed = clamp(this.speed, this.targetSpeed * 0.3, this.targetSpeed * 1.9);
+        this.player += Math.max(0.5, this.targetSpeed * 0.014);
         this.footKick = true;
       },
 
@@ -1149,7 +1166,7 @@
         if (live != null && live > this.peakWpm) this.peakWpm = live;
         let wpm = cfg.monsterWpm;
         if (cfg.adaptive) wpm = Math.max(wpm, this.peakWpm * (cfg.adaptiveMult || 1.05));
-        if (cfg.endless) wpm += Math.floor(this.player / 100) * 2;
+        if (cfg.endless) wpm += Math.floor(this.player / 100) * 4;
         return wpm;
       },
 
@@ -1162,37 +1179,40 @@
         } else {
           let rate = 1 / cfg.doorTime;
           if (cfg.doorAccelFinal && Number.isFinite(this.track) && this.player > this.track - 300) {
-            rate *= 1.85;
+            rate *= 2.15;
           }
           this.doorOpen = clamp(this.doorOpen - rate * dt, 0, 1);
         }
 
         const cps = typing.recentCps(now);
         let desired = (cps / this.targetCps) * this.targetSpeed;
-        desired = clamp(desired, 0, this.targetSpeed * 2.6);
+        desired = clamp(desired, 0, this.targetSpeed * 1.85);
         if (typing.boostLeft > 0) desired *= ADRENALINE_MULT;
         if (typing.stallLeft > 0) {
-          this.speed *= Math.exp(-2.4 * dt);
+          this.speed *= Math.exp(-3.1 * dt);
         } else {
-          const follow = 11;
-          this.speed = lerp(this.speed, Math.max(desired, this.speed * 0.72), 1 - Math.exp(-follow * dt));
+          const follow = 12;
+          this.speed = lerp(this.speed, Math.max(desired, this.speed * 0.48), 1 - Math.exp(-follow * dt));
         }
         this.player += this.speed * dt;
 
         if (!cfg.monsterOff) {
           const hunt = this.huntWpm(typing);
-          let mSpeed = this.targetSpeed * (hunt / Math.max(cfg.targetWpm, 1)) * 0.94;
+          let mSpeed = this.targetSpeed * (hunt / Math.max(cfg.targetWpm, 1)) * 1.04;
           let wake = 0;
+          const wakeHold = cfg.wakeSec != null ? cfg.wakeSec : 1.3;
+          const wakeRate = cfg.wakeRate != null ? cfg.wakeRate : 0.5;
           if (typing.startedAt) {
             const age = (now - typing.startedAt) / 1000;
-            if (age < 2) wake = 0.3;
-            else if (age < 2.75) wake = lerp(0.3, 1, (age - 2) / 0.75);
+            if (age < wakeHold) wake = wakeRate;
+            else if (age < wakeHold + 0.55) wake = lerp(wakeRate, 1, (age - wakeHold) / 0.55);
             else wake = 1;
           }
           mSpeed *= wake;
+          if (cfg.huntDrive) mSpeed *= cfg.huntDrive;
           const gap = this.player - this.monster;
-          if (gap > 260) mSpeed *= 1.08;
-          else if (gap < 70 && wake >= 1) mSpeed *= cfg.closeAccel || 1;
+          if (gap > 230) mSpeed *= cfg.gapCatchup || 1.1;
+          else if (gap < 80 && wake >= 1) mSpeed *= cfg.closeAccel || 1;
           this.monster += mSpeed * dt;
         }
 
