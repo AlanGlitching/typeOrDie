@@ -9,66 +9,118 @@
   const ADRENALINE_WORDS = 5;
   const ADRENALINE_SEC = 3;
   const ADRENALINE_MULT = 1.28;
+  const MUSIC_BPM = 134;
+  const MUSIC_STEP = 60 / MUSIC_BPM / 4;
 
-  const LEX = {
-    nouns: [
-      "terminal", "containment", "airlock", "reactor", "specimen", "protocol",
-      "shadow", "bulkhead", "corridor", "override", "sensor", "core", "breach",
-      "perimeter", "generator", "hatch", "visor", "clamp", "siren", "coolant",
+  const HORROR_SETS = [
+    [
+      "Containment sector four has suffered a critical failure and the primary blast gates are sliding shut.",
+      "Security cameras confirm Experiment-09 has broken through the observation glass and is entering the main corridor.",
+      "Run toward the beacon lights at the far end of the hall before the perimeter seal becomes permanent.",
     ],
-    verbs: [
-      "collapse", "override", "shatter", "escape", "terminate", "isolate",
-      "activate", "bypass", "unseal", "accelerate", "rupture", "stabilize",
-      "divert", "disable", "seal", "purge", "evacuate",
+    [
+      "Do not stop to gather equipment because all remaining power is being diverted to the hydraulic escape door.",
+      "Emergency protocols require manual terminal overrides to unlock the outer bulkhead before the countdown reaches zero.",
+      "Keep both hands on the keys and do not look away from the corridor until the last hatch opens.",
     ],
-    adjectives: [
-      "critical", "hostile", "hydraulic", "compromised", "unstable", "rapidly",
-      "emergency", "synthetic", "lethal", "autonomous", "seismic", "manual",
-      "failing", "locked", "burning",
+    [
+      "The shadow creature tracks vibrations across the steel floor, so keep your stride steady and move fast.",
+      "You can hear heavy footfalls echoing through the ventilation shafts directly behind you.",
+      "Do not look back until you have crossed the painted safety line at the blast door.",
     ],
-    connectors: [
-      "before it catches",
-      "lock the gates",
-      "divert power to thrusters",
-      "pressure drops to zero",
-      "movement detected in quadrant four",
-      "do not look back",
-      "keep the visor sealed",
-      "sprint for the blast door",
+    [
+      "Warning: secondary oxygen vents are venting toxic gas and atmospheric pressure is dropping rapidly.",
+      "Seal your visor and follow the yellow markers through the compromised airlock.",
+      "The lower decks will flood in ninety seconds if the override sequence is not accepted.",
     ],
-  };
+    [
+      "Central intelligence reports that the specimen has learned to force open sealed doors.",
+      "All automated turrets are offline, and the remaining staff have already evacuated the west wing.",
+      "You are the last operator still logged into the containment terminal.",
+    ],
+    [
+      "Reactor coolant is failing, and the corridor lights flicker with every impact against the bulkhead.",
+      "Divert remaining power from the research labs to the outer gate actuators immediately.",
+      "If the door stalls at forty percent, you will have to crawl beneath the hydraulic ram.",
+    ],
+    [
+      "This is a repeating distress call from containment: Experiment-09 is loose and closing on the exit route.",
+      "Any surviving personnel must abandon their stations and sprint for the surface elevator.",
+      "The elevator will lock after one ascent, so do not wait for anyone behind you.",
+    ],
+    [
+      "Motion sensors along the north corridor have gone dark in sequence, one after another.",
+      "The last camera still online shows a tall shape moving faster than a sprinting human.",
+      "Update your route toward service tunnel seven before the creature reaches the junction.",
+    ],
+    [
+      "The blast door timer has entered its final cycle and will not accept a remote delay.",
+      "Type the override sequence exactly as displayed or the gate will seal with you inside.",
+      "Heat signatures suggest the specimen is less than sixty meters from your current position.",
+    ],
+    [
+      "Keep the visor sealed because the air beyond the inner hatch is no longer breathable.",
+      "Steam is pouring from the ruptured pipes, and the floor is slick with coolant.",
+      "Reach the beacon at the far bulkhead and confirm the lock from the other side.",
+    ],
+    [
+      "Facility log: the observation glass in sector two shattered at 04:12 and was not an accident.",
+      "The specimen paused at the broken frame, then dropped into the hallway without a sound.",
+      "Security advises a straight sprint to airlock C and no stops at supply cabinets.",
+    ],
+    [
+      "System warning: hydraulic pressure in the escape door has fallen below the safe threshold.",
+      "Pump residual charge from the backup cells before the ram loses its last meter of travel.",
+      "If the amber strobes go dark, the lock is already committed and cannot be reversed.",
+    ],
+  ];
 
-  const COMMON_WORDS = [
-    "the", "of", "to", "and", "a", "in", "is", "it", "you", "that", "he", "was",
-    "for", "on", "are", "with", "as", "his", "they", "be", "at", "one", "have",
-    "this", "from", "or", "had", "by", "but", "some", "what", "there", "we",
-    "can", "out", "other", "were", "all", "your", "when", "up", "use", "word",
-    "how", "said", "each", "she", "which", "do", "their", "time", "if", "will",
-    "way", "about", "many", "then", "them", "write", "would", "like", "so",
-    "these", "her", "long", "make", "thing", "see", "him", "two", "has", "look",
-    "more", "day", "could", "go", "come", "did", "number", "sound", "no", "most",
-    "who", "over", "know", "water", "than", "call", "first", "people", "may",
-    "down", "side", "been", "now", "find", "any", "new", "work", "part", "take",
-    "get", "place", "made", "live", "where", "after", "back", "little", "only",
-    "round", "man", "year", "came", "show", "every", "good", "me", "give", "our",
-    "under", "name", "very", "through", "just", "form", "great", "think", "say",
-    "help", "low", "line", "turn", "cause", "much", "mean", "before", "move",
-    "right", "old", "too", "same", "tell", "does", "set", "three", "want", "air",
-    "well", "also", "play", "small", "end", "put", "home", "read", "hand", "large",
-    "spell", "add", "even", "land", "here", "must", "big", "high", "such", "follow",
-    "act", "why", "ask", "change", "went", "light", "kind", "off", "need", "house",
-    "try", "us", "again", "point", "world", "near", "build", "self", "earth",
-    "father", "head", "stand", "own", "page", "should", "found", "answer", "school",
-    "grow", "study", "still", "learn", "plant", "cover", "food", "sun", "four",
-    "between", "state", "keep", "eye", "never", "last", "let", "thought", "city",
-    "tree", "cross", "farm", "hard", "start", "might", "story", "saw", "far", "sea",
-    "draw", "left", "late", "run", "while", "press", "close", "night", "real",
-    "life", "few", "north", "book", "carry", "took", "science", "eat", "room",
-    "friend", "began", "idea", "stop", "once", "base", "hear", "cut", "sure",
-    "watch", "color", "face", "wood", "main", "enough", "open", "seem", "next",
-    "always", "those", "both", "paper", "together", "got", "group", "often",
-    "important", "until", "children", "feet", "car", "mile", "walk", "white",
-    "begin", "example", "music", "mark", "letter", "river", "care", "second", "rain",
+  const NATURAL_PASSAGES = [
+    "The morning light spilled across the wooden table and warmed the quiet kitchen.",
+    "She packed a small bag, locked the door, and walked toward the waiting train.",
+    "Rivers carve the land slowly, but they never forget the shortest path downhill.",
+    "A good plan is useless if you never take the first careful step forward.",
+    "The library was silent except for the turning of pages and the rain on the windows.",
+    "He counted the stars until the horizon paled and the city lights went out.",
+    "Practice does not make perfect, but it does make the next attempt a little cleaner.",
+    "Winter arrived early that year, covering the fields in a thin, glittering frost.",
+    "They built the bridge not for themselves, but for whoever would come after.",
+    "Curiosity is a kind of courage that asks questions even when the answers sting.",
+    "The old radio crackled, then found a clear station playing a song from years ago.",
+    "Maps are only useful if you are willing to leave the place you already know.",
+    "Coffee cooled beside the notebook while the writer searched for a better sentence.",
+    "Children ran through the garden, leaving a trail of laughter and trampled grass.",
+    "Time is generous to those who work steadily and cruel to those who wait for luck.",
+    "The sea does not argue with the shore; it simply returns, again and again.",
+    "Kindness costs little, yet it can change the shape of an entire afternoon.",
+    "He learned to listen before he learned to speak, and that made all the difference.",
+    "Mountains look immovable until you watch them through a lifetime of weather.",
+    "The simplest tools still require a steady hand and a patient mind.",
+    "Evening settled over the harbor as the last boat tied itself to the dock.",
+    "A clear explanation is often the difference between panic and a workable plan.",
+    "She traced the route with her finger, then closed the atlas and started walking.",
+    "Thunder rolled across the valley, but the travelers kept their pace on the ridge.",
+    "Memory is a lantern: it does not remove the dark, but it lets you see the next few steps.",
+    "The baker opened the shutters, dusted the counter, and waited for the first customers.",
+    "Good questions travel farther than clever answers, and they last a lot longer too.",
+    "He folded the letter twice, slipped it into his coat, and stepped into the cold air.",
+    "The path through the pines was narrow, but it led to a wide and quiet lake.",
+    "Some days are for building, and some days are for keeping what you have already made.",
+  ];
+
+  const CODE_LINES = [
+    "if (breachLevel > 3) return lock.seal(outerGate);",
+    "const status = await core.getOverride('bulkhead');",
+    "while (doorOpen > 0) pump.divert(remainingPower);",
+    "try { hatch.unlock(); } catch (err) { return false; }",
+    "userId = session.authToken;",
+    "setOverride(true);",
+    "if (err) return;",
+    "const gateLock = sensors[0].read();",
+    "for (let i = 0; i < vents.length; i += 1) vents[i].close();",
+    "system.purgeCoolant(coreTemp);",
+    "hashKey === authToken && seal.engage();",
+    "await delay(countdown);",
   ];
 
   const DIFFICULTIES = {
@@ -253,6 +305,7 @@
     muted: localStorage.getItem(MUTE_KEY) === "1",
     sirenNodes: null,
     rumbleNodes: null,
+    music: null,
 
     ensure() {
       if (this.ctx) return;
@@ -356,8 +409,6 @@
       rumbleGain.connect(this.master);
       rumble.start(t);
       this.rumbleNodes = { rumble, rumbleGain };
-
-      this.startMusic();
     },
 
     startMusic() {
@@ -365,16 +416,16 @@
       const t = this.ctx.currentTime;
       const bus = this.ctx.createGain();
       bus.gain.setValueAtTime(0.0001, t);
-      bus.gain.exponentialRampToValueAtTime(0.55, t + 0.18);
+      bus.gain.exponentialRampToValueAtTime(0.58, t + 0.22);
       bus.connect(this.master);
 
       const bassFilter = this.ctx.createBiquadFilter();
       bassFilter.type = "lowpass";
-      bassFilter.frequency.setValueAtTime(600, t);
-      bassFilter.Q.setValueAtTime(7.2, t);
+      bassFilter.frequency.setValueAtTime(500, t);
+      bassFilter.Q.setValueAtTime(9.4, t);
 
       const bassGain = this.ctx.createGain();
-      bassGain.gain.value = 0.16;
+      bassGain.gain.value = 0.0001;
       bassFilter.connect(bassGain);
       bassGain.connect(bus);
 
@@ -384,7 +435,7 @@
       bassB.type = "sawtooth";
       bassA.frequency.setValueAtTime(73.42, t);
       bassB.frequency.setValueAtTime(73.42, t);
-      bassB.detune.setValueAtTime(8, t);
+      bassB.detune.setValueAtTime(7, t);
       bassA.connect(bassFilter);
       bassB.connect(bassFilter);
       bassA.start(t);
@@ -394,6 +445,25 @@
       warnGain.gain.value = 0.0001;
       warnGain.connect(bus);
 
+      const siren = this.ctx.createOscillator();
+      const sirenB = this.ctx.createOscillator();
+      const sirenLfo = this.ctx.createOscillator();
+      const sirenMod = this.ctx.createGain();
+      siren.type = "sine";
+      sirenB.type = "triangle";
+      siren.frequency.setValueAtTime(488, t);
+      sirenB.frequency.setValueAtTime(732, t);
+      sirenLfo.type = "sine";
+      sirenLfo.frequency.setValueAtTime(1.7, t);
+      sirenMod.gain.value = 92;
+      sirenLfo.connect(sirenMod);
+      sirenMod.connect(siren.frequency);
+      siren.connect(warnGain);
+      sirenB.connect(warnGain);
+      siren.start(t);
+      sirenB.start(t);
+      sirenLfo.start(t);
+
       this.music = {
         bus,
         bassFilter,
@@ -401,22 +471,34 @@
         bassA,
         bassB,
         warnGain,
+        siren,
+        sirenB,
+        sirenLfo,
+        sirenMod,
         step: 0,
-        nextTime: t + 0.04,
+        nextTime: t + 0.02,
         boosting: false,
-        intensity: 0,
-        notes: [73.42, 87.31, 98.0, 116.54],
+        gap: 999,
+        notes: [
+          73.42, 73.42, 87.31, 98.00, 116.54,
+          73.42, 87.31, 98.00, 73.42, 73.42,
+          87.31, 98.00, 116.54, 116.54, 87.31, 73.42,
+        ],
       };
       this.scheduleMusic();
     },
 
+    ensureMusic() {
+      this.resume();
+      if (!this.music) this.startMusic();
+    },
+
     scheduleMusic() {
       if (!this.ctx || !this.music) return;
-      const stepSec = 60 / 136 / 4;
-      const horizon = this.ctx.currentTime + 0.14;
+      const horizon = this.ctx.currentTime + 0.22;
       while (this.music && this.music.nextTime < horizon) {
         this.playMusicStep(this.music.step, this.music.nextTime);
-        this.music.nextTime += stepSec;
+        this.music.nextTime += MUSIC_STEP;
         this.music.step = (this.music.step + 1) % 16;
       }
     },
@@ -428,35 +510,47 @@
 
       if (step % 4 === 0) this.synthKick(when);
       if (step === 4 || step === 12) this.synthSnare(when);
-      this.synthHat(when, step % 2 === 0 ? 0.045 : 0.028);
-      if (boost) this.synthHat(when + (60 / 136 / 8), 0.03);
 
-      if (step % 4 === 0) {
-        const note = m.notes[(step / 4) | 0];
-        const freq = boost ? note * 1.059 : note;
-        m.bassA.frequency.setTargetAtTime(freq, when, 0.012);
-        m.bassB.frequency.setTargetAtTime(freq, when, 0.012);
-        m.bassGain.gain.setValueAtTime(0.2, when);
-        m.bassGain.gain.exponentialRampToValueAtTime(0.13, when + 0.18);
-      }
+      const hatVel = 0.018 + ((step * 5 + 3) % 8) * 0.0042 + (step % 4 === 2 ? 0.01 : 0);
+      this.synthHat(when, hatVel);
+      if (boost) this.synthHat(when + MUSIC_STEP * 0.5, hatVel * 0.72);
 
-      if (m.intensity > 0.48 && (step === 0 || step === 8)) {
-        this.synthWarn(when, m.intensity);
-      }
+      const note = m.notes[step];
+      const freq = boost ? note * 1.05946 : note;
+      m.bassA.frequency.setValueAtTime(freq, when);
+      m.bassB.frequency.setValueAtTime(freq, when);
+      const accent = step % 4 === 0 ? 0.22 : 0.15;
+      m.bassGain.gain.cancelScheduledValues(when);
+      m.bassGain.gain.setValueAtTime(accent, when);
+      m.bassGain.gain.exponentialRampToValueAtTime(0.07, when + MUSIC_STEP * 0.85);
     },
 
     synthKick(when) {
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(148, when);
-      osc.frequency.exponentialRampToValueAtTime(42, when + 0.11);
-      g.gain.setValueAtTime(0.62, when);
+      osc.frequency.setValueAtTime(168, when);
+      osc.frequency.exponentialRampToValueAtTime(38, when + 0.1);
+      g.gain.setValueAtTime(0.78, when);
       g.gain.exponentialRampToValueAtTime(0.001, when + 0.2);
       osc.connect(g);
       g.connect(this.music.bus);
       osc.start(when);
       osc.stop(when + 0.22);
+
+      const click = this.ctx.createBufferSource();
+      click.buffer = this.noiseBuffer();
+      const hp = this.ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = 1400;
+      const cg = this.ctx.createGain();
+      cg.gain.setValueAtTime(0.12, when);
+      cg.gain.exponentialRampToValueAtTime(0.001, when + 0.025);
+      click.connect(hp);
+      hp.connect(cg);
+      cg.connect(this.music.bus);
+      click.start(when);
+      click.stop(when + 0.03);
     },
 
     synthSnare(when) {
@@ -464,28 +558,28 @@
       src.buffer = this.noiseBuffer();
       const bp = this.ctx.createBiquadFilter();
       bp.type = "bandpass";
-      bp.frequency.value = 1800;
-      bp.Q.value = 0.9;
+      bp.frequency.value = 2100;
+      bp.Q.value = 0.75;
       const g = this.ctx.createGain();
-      g.gain.setValueAtTime(0.2, when);
-      g.gain.exponentialRampToValueAtTime(0.001, when + 0.12);
+      g.gain.setValueAtTime(0.24, when);
+      g.gain.exponentialRampToValueAtTime(0.001, when + 0.13);
       src.connect(bp);
       bp.connect(g);
       g.connect(this.music.bus);
       src.start(when);
-      src.stop(when + 0.14);
+      src.stop(when + 0.15);
 
       const tone = this.ctx.createOscillator();
       const tg = this.ctx.createGain();
       tone.type = "triangle";
-      tone.frequency.setValueAtTime(196, when);
-      tone.frequency.exponentialRampToValueAtTime(110, when + 0.07);
-      tg.gain.setValueAtTime(0.08, when);
-      tg.gain.exponentialRampToValueAtTime(0.001, when + 0.08);
+      tone.frequency.setValueAtTime(188, when);
+      tone.frequency.exponentialRampToValueAtTime(108, when + 0.08);
+      tg.gain.setValueAtTime(0.07, when);
+      tg.gain.exponentialRampToValueAtTime(0.001, when + 0.09);
       tone.connect(tg);
       tg.connect(this.music.bus);
       tone.start(when);
-      tone.stop(when + 0.09);
+      tone.stop(when + 0.1);
     },
 
     synthHat(when, vol) {
@@ -493,30 +587,15 @@
       src.buffer = this.noiseBuffer();
       const hp = this.ctx.createBiquadFilter();
       hp.type = "highpass";
-      hp.frequency.value = 7200;
+      hp.frequency.value = 7800;
       const g = this.ctx.createGain();
       g.gain.setValueAtTime(vol, when);
-      g.gain.exponentialRampToValueAtTime(0.001, when + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, when + 0.028);
       src.connect(hp);
       hp.connect(g);
       g.connect(this.music.bus);
       src.start(when);
       src.stop(when + 0.04);
-    },
-
-    synthWarn(when, intensity) {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = "square";
-      osc.frequency.setValueAtTime(466, when);
-      osc.frequency.linearRampToValueAtTime(622, when + 0.16);
-      const vol = 0.012 + intensity * 0.05;
-      g.gain.setValueAtTime(vol, when);
-      g.gain.exponentialRampToValueAtTime(0.001, when + 0.2);
-      osc.connect(g);
-      g.connect(this.music.warnGain);
-      osc.start(when);
-      osc.stop(when + 0.22);
     },
 
     updateRumble(proximity) {
@@ -526,30 +605,29 @@
       this.rumbleNodes.rumble.frequency.setTargetAtTime(38 + proximity * 28, this.ctx.currentTime, 0.1);
     },
 
-    updateMusic(proximity, remaining, boosting) {
+    updateMusic(gap, remaining, boosting) {
       this.scheduleMusic();
       if (!this.music || !this.ctx) return;
-      const late = remaining <= 200 ? clamp(1 - remaining / 200, 0, 1) : 0;
-      const intensity = clamp(Math.max(proximity, late), 0, 1);
-      this.music.intensity = intensity;
       this.music.boosting = !!boosting;
-      const cutoff = 600 + intensity * 2900;
+      this.music.gap = gap;
       const now = this.ctx.currentTime;
-      this.music.bassFilter.frequency.setTargetAtTime(cutoff, now, 0.08);
-      this.music.bassFilter.Q.setTargetAtTime(7.2 + intensity * 3.4, now, 0.1);
-      const warn = intensity > 0.42 ? (intensity - 0.42) * 0.22 : 0.0001;
-      this.music.warnGain.gain.setTargetAtTime(Math.max(0.0001, warn), now, 0.1);
-      this.music.bassA.detune.setTargetAtTime(boosting ? 70 : 0, now, 0.05);
-      this.music.bassB.detune.setTargetAtTime(boosting ? 86 : 8, now, 0.05);
+      const close = clamp(1 - gap / 50, 0, 1);
+      const cutoff = gap > 100 ? 500 : 500 + close * 2500;
+      this.music.bassFilter.frequency.setTargetAtTime(cutoff, now, 0.09);
+      this.music.bassFilter.Q.setTargetAtTime(8.6 + close * 4.2, now, 0.12);
+      const warn = gap < 20 ? clamp((20 - gap) / 20, 0, 1) * 0.045 : 0.0001;
+      this.music.warnGain.gain.setTargetAtTime(Math.max(0.0001, warn), now, 0.08);
+      this.music.bassA.detune.setTargetAtTime(boosting ? 85 : 0, now, 0.05);
+      this.music.bassB.detune.setTargetAtTime(boosting ? 102 : 7, now, 0.05);
     },
 
     teardownMusic(handle) {
       if (!handle) return;
-      ["bassA", "bassB"].forEach((key) => {
+      ["bassA", "bassB", "siren", "sirenB", "sirenLfo"].forEach((key) => {
         try { handle[key].stop(); } catch { /* already stopped */ }
         try { handle[key].disconnect(); } catch { /* */ }
       });
-      ["bassFilter", "bassGain", "warnGain", "bus"].forEach((key) => {
+      ["bassFilter", "bassGain", "warnGain", "sirenMod", "bus"].forEach((key) => {
         try { handle[key].disconnect(); } catch { /* */ }
       });
     },
@@ -566,9 +644,9 @@
         handle.bus.gain.cancelScheduledValues(t);
         handle.bus.gain.setValueAtTime(Math.max(0.0001, handle.bus.gain.value), t);
         if (immediate) handle.bus.gain.setValueAtTime(0.0001, t);
-        else handle.bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+        else handle.bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
       } catch { /* */ }
-      const delay = immediate ? 0 : 240;
+      const delay = immediate ? 0 : 450;
       setTimeout(() => this.teardownMusic(handle), delay);
     },
 
@@ -609,65 +687,27 @@
   /* ------------------------------------------------------------------ */
 
   const TextGen = {
-    pick(list, used) {
-      const pool = list.filter((w) => w && !used.has(w));
-      const src = pool.length ? pool : list;
-      const word = src[Math.floor(Math.random() * src.length)];
-      if (word) used.add(word);
-      return word || "system";
+    mode: "mix",
+    punctuation: true,
+    recent: [],
+    setIndex: -1,
+    lineIndex: 0,
+    lastNatural: "",
+    lastCode: "",
+    mixPreferHorror: true,
+
+    reset() {
+      this.recent = [];
+      this.setIndex = -1;
+      this.lineIndex = 0;
+      this.lastNatural = "";
+      this.lastCode = "";
+      this.mixPreferHorror = Math.random() < 0.6;
     },
 
-    cap(text) {
-      const s = String(text || "").trim();
-      if (!s) return "";
-      return s.charAt(0).toUpperCase() + s.slice(1);
-    },
-
-    bare(word) {
-      return String(word || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-    },
-
-    thematicSentence() {
-      const used = new Set();
-      const n = () => this.pick(LEX.nouns, used);
-      const v = () => this.pick(LEX.verbs, used);
-      const a = () => this.pick(LEX.adjectives, used);
-      const c = () => this.pick(LEX.connectors, used);
-      const builders = [
-        () => `Warning: the ${n()} is ${a()}, ${v()} the ${n()} immediately.`,
-        () => `Emergency protocol engaged as ${n()} begins to ${v()} in the lower ${n()}.`,
-        () => `Override the ${a()} ${n()} and run toward the final ${n()}.`,
-        () => `The ${a()} ${n()} will ${v()} ${c()}.`,
-        () => `${this.cap(v())} the ${n()} before the ${a()} ${n()} can ${v()}.`,
-        () => `Sensors report a ${a()} ${n()} near the ${n()}, ${c()}.`,
-        () => `Do not ${v()} the ${n()}. ${this.cap(c())}.`,
-        () => `Manual ${n()} failed. ${this.cap(v())} the ${a()} ${n()} now.`,
-        () => `A ${a()} shadow crosses the ${n()} as the ${n()} starts to ${v()}.`,
-        () => `${this.cap(n())} status is ${a()}. ${this.cap(v())} power and ${c()}.`,
-        () => `Keep moving through the ${a()} ${n()} while the ${n()} continues to ${v()}.`,
-        () => `If the ${n()} cannot ${v()}, ${c()}.`,
-      ];
-      return builders[Math.floor(Math.random() * builders.length)]();
-    },
-
-    commonSentence() {
-      const len = 8 + Math.floor(Math.random() * 7);
-      const words = [];
-      let last = "";
-      for (let i = 0; i < len; i++) {
-        let next = "";
-        for (let t = 0; t < 10; t++) {
-          next = COMMON_WORDS[Math.floor(Math.random() * COMMON_WORDS.length)];
-          if (next && next !== last) break;
-        }
-        if (!next || next === last) continue;
-        words.push(next);
-        last = next;
-      }
-      if (words.length < 4) words.push("the", "next", "move", "now");
-      words[0] = this.cap(words[0]);
-      words[words.length - 1] += ".";
-      return words.join(" ");
+    remember(sentence) {
+      this.recent.push(sentence);
+      if (this.recent.length > 14) this.recent.shift();
     },
 
     tokenize(sentence) {
@@ -677,33 +717,6 @@
         .split(" ")
         .map((w) => w.trim())
         .filter((w) => w.length > 0);
-    },
-
-    codeSentence() {
-      const tokens = [
-        "if(err)", "return;", "lock.seal();", "x=42;", "arr[0]", "foo.bar",
-        "#ff0033", "while(true)", "catch(e)", "n+=1;", "authToken", "getStatus()",
-        "setOverride", "coreTemp", "userId", "breachMap", "===", "=>{ }",
-        "purgeCoolant()", "hashKey", "sysRef", "gateLock", "null", "true",
-        "const", "let", "await", "try{", "}finally", "0x7f", "idx++",
-      ];
-      const len = 6 + Math.floor(Math.random() * 5);
-      const out = [];
-      let last = "";
-      for (let i = 0; i < len; i++) {
-        let next = tokens[Math.floor(Math.random() * tokens.length)];
-        if (next === last) continue;
-        out.push(next);
-        last = next;
-      }
-      return out.join(" ");
-    },
-
-    nextSentence() {
-      if (this.mode === "code") return this.codeSentence();
-      if (this.mode === "lore") return this.thematicSentence();
-      if (this.mode === "standard") return this.commonSentence();
-      return Math.random() < 0.68 ? this.thematicSentence() : this.commonSentence();
     },
 
     styleWord(word) {
@@ -717,24 +730,90 @@
       return word;
     },
 
-    generate(count, previous) {
+    wordsFrom(sentences) {
       const out = [];
-      let last = this.bare(previous);
-      let guard = 0;
-      while (out.length < count && guard < count * 8) {
-        guard += 1;
-        const chunk = this.tokenize(this.nextSentence());
-        for (const raw of chunk) {
+      sentences.forEach((sentence) => {
+        this.tokenize(sentence).forEach((raw) => {
           const word = this.styleWord(raw);
-          if (!word) continue;
-          const key = this.bare(word);
-          if (!key || key === last) continue;
-          out.push(word);
-          last = key;
-          if (out.length >= count) break;
-        }
-      }
+          if (word) out.push(word);
+        });
+      });
       return out;
+    },
+
+    pickFrom(list, avoid) {
+      const fresh = list.filter((item) => item && item !== avoid && !this.recent.includes(item));
+      const pool = fresh.length ? fresh : list.filter((item) => item && item !== avoid);
+      const src = pool.length ? pool : list;
+      return src[Math.floor(Math.random() * src.length)] || list[0];
+    },
+
+    nextHorrorSet() {
+      const choices = HORROR_SETS.map((_, i) => i).filter((i) => i !== this.setIndex);
+      this.setIndex = choices[Math.floor(Math.random() * choices.length)];
+      this.lineIndex = 0;
+    },
+
+    nextHorrorSentence() {
+      if (this.setIndex < 0 || this.lineIndex >= HORROR_SETS[this.setIndex].length) {
+        this.nextHorrorSet();
+      }
+      const sentence = HORROR_SETS[this.setIndex][this.lineIndex];
+      this.lineIndex += 1;
+      this.remember(sentence);
+      return sentence;
+    },
+
+    nextNaturalSentence() {
+      const sentence = this.pickFrom(NATURAL_PASSAGES, this.lastNatural);
+      this.lastNatural = sentence;
+      this.remember(sentence);
+      return sentence;
+    },
+
+    nextCodeLine() {
+      const sentence = this.pickFrom(CODE_LINES, this.lastCode);
+      this.lastCode = sentence;
+      this.remember(sentence);
+      return sentence;
+    },
+
+    nextSentence() {
+      if (this.mode === "code") return this.nextCodeLine();
+      if (this.mode === "standard") return this.nextNaturalSentence();
+      if (this.mode === "lore") return this.nextHorrorSentence();
+      if (this.setIndex >= 0 && this.lineIndex < HORROR_SETS[this.setIndex].length) {
+        return this.nextHorrorSentence();
+      }
+      return Math.random() < 0.58 ? this.nextHorrorSentence() : this.nextNaturalSentence();
+    },
+
+    takeSentences(count) {
+      const n = Math.max(1, count);
+      const out = [];
+      for (let i = 0; i < n; i++) out.push(this.nextSentence());
+      return out.filter(Boolean);
+    },
+
+    seedWords() {
+      const count = Math.random() < 0.55 ? 3 : 2;
+      if (this.mode === "code" || this.mode === "standard") {
+        return this.wordsFrom(this.takeSentences(count));
+      }
+      const useHorror = this.mode === "lore" || Math.random() < 0.62;
+      if (useHorror) {
+        this.nextHorrorSet();
+        const set = HORROR_SETS[this.setIndex];
+        const n = Math.min(count, set.length);
+        const chunk = [];
+        for (let i = 0; i < n; i++) chunk.push(this.nextHorrorSentence());
+        return this.wordsFrom(chunk);
+      }
+      return this.wordsFrom(Array.from({ length: count }, () => this.nextNaturalSentence()));
+    },
+
+    appendSentence() {
+      return this.wordsFrom(this.takeSentences(1));
     },
   };
 
@@ -788,9 +867,8 @@
       },
 
       ensureWords() {
-        while (this.words.length - this.wordIndex < 40) {
-          const last = this.words[this.words.length - 1] || "";
-          this.pushWords(TextGen.generate(18, last));
+        while (this.words.length - this.wordIndex < 12) {
+          this.pushWords(TextGen.appendSentence());
         }
       },
 
@@ -798,6 +876,7 @@
         const options = opts || {};
         TextGen.mode = options.textMode || "mix";
         TextGen.punctuation = options.punctuation !== false;
+        TextGen.reset();
         this.words = [];
         this.states = [];
         this.extras = [];
@@ -813,7 +892,7 @@
         this.stallLeft = 0;
         this.startedAt = 0;
         this.stallSec = options.stall != null ? options.stall : STALL_SEC;
-        this.pushWords(TextGen.generate(45, ""));
+        this.pushWords(TextGen.seedWords());
         this.ensureWords();
         this.dirty = [0];
       },
@@ -2067,6 +2146,9 @@
     applyKey(key) {
       const result = this.typing.handleKey(key, performance.now());
       if (!result) return false;
+      if (result === "ok" || result === "err" || result === "extra" || result === "boost") {
+        AudioSystem.ensureMusic();
+      }
       if (result === "ok" || result === "boost") AudioSystem.click();
       else if (result === "err" || result === "extra") AudioSystem.buzz();
       if (result === "ok") this.race.nudge(true);
@@ -2184,7 +2266,7 @@
       const proximity = clamp(1 - gap / 200, 0, 1);
       AudioSystem.updateRumble(proximity);
       const remain = Number.isFinite(this.race.track) ? this.race.track - this.race.player : 9999;
-      AudioSystem.updateMusic(proximity, remain, this.typing.boostLeft > 0);
+      AudioSystem.updateMusic(gap, remain, this.typing.boostLeft > 0);
 
       this.updateHud();
 
