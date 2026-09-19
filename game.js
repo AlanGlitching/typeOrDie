@@ -79,7 +79,7 @@
       targetWpm: 35,
       monsterWpm: 35,
       doorTime: 120,
-      startGap: 180,
+      startGap: 200,
       closeAccel: 1.02,
       stall: 0.2,
     },
@@ -90,7 +90,7 @@
       targetWpm: 50,
       monsterWpm: 50,
       doorTime: 80,
-      startGap: 130,
+      startGap: 190,
       closeAccel: 1.06,
       stall: 0.3,
     },
@@ -101,7 +101,7 @@
       targetWpm: 70,
       monsterWpm: 70,
       doorTime: 64,
-      startGap: 100,
+      startGap: 185,
       closeAccel: 1.1,
       stall: 0.4,
       doorAccelFinal: true,
@@ -113,7 +113,7 @@
       targetWpm: 90,
       monsterWpm: 90,
       doorTime: 50,
-      startGap: 72,
+      startGap: 180,
       closeAccel: 1.16,
       stall: 0.5,
     },
@@ -124,7 +124,7 @@
       targetWpm: 90,
       monsterWpm: 70,
       doorTime: 46,
-      startGap: 55,
+      startGap: 180,
       closeAccel: 1.2,
       stall: 1,
       adaptive: true,
@@ -835,6 +835,11 @@
         return this.recent.length / 2;
       },
 
+      burstCps(now) {
+        const cut = now - 380;
+        return this.recent.filter((t) => t > cut).length / 0.38;
+      },
+
       markDirty(i) {
         if (!this.dirty.includes(i)) this.dirty.push(i);
       },
@@ -920,6 +925,7 @@
           this.correctKeys += 1;
           this.recent.push(now);
           this.errored = false;
+          this.stallLeft = 0;
         } else {
           this.states[i][this.letterIndex] = "incorrect";
           this.penalize();
@@ -942,6 +948,7 @@
           this.extras[i] = this.extras[i].slice(0, -1);
           this.markDirty(i);
           this.errored = this.wordHasError(i);
+          if (!this.errored) this.stallLeft = 0;
           return "back";
         }
         if (this.letterIndex > 0) {
@@ -952,6 +959,7 @@
           this.totalKeys = Math.max(0, this.totalKeys - 1);
           this.markDirty(i);
           this.errored = this.wordHasError(i);
+          if (!this.errored) this.stallLeft = 0;
           return "back";
         }
         if (i === 0) return "back";
@@ -967,6 +975,7 @@
           this.letterIndex -= 1;
         }
         this.errored = this.wordHasError(prev);
+        if (!this.errored) this.stallLeft = 0;
         this.markDirty(prev);
         this.markDirty(i);
         return "back";
@@ -1116,12 +1125,24 @@
       targetSpeed,
       peakWpm: 0,
       player: 0,
-      monster: cfg.monsterOff ? -4000 : -cfg.startGap,
+      monster: cfg.monsterOff ? -4000 : -Math.max(180, cfg.startGap || 180),
       speed: 0,
       doorOpen: 1,
       elapsed: 0,
       result: null,
       lastAccelMark: 0,
+      footKick: false,
+
+      nudge(ok) {
+        if (!ok) {
+          this.speed *= 0.52;
+          return;
+        }
+        this.speed += this.targetSpeed * 0.34;
+        this.speed = clamp(this.speed, this.targetSpeed * 0.38, this.targetSpeed * 2.8);
+        this.player += Math.max(2.4, this.targetSpeed * 0.055);
+        this.footKick = true;
+      },
 
       huntWpm(typing) {
         const live = typing.liveWpm();
@@ -1148,19 +1169,30 @@
 
         const cps = typing.recentCps(now);
         let desired = (cps / this.targetCps) * this.targetSpeed;
-        desired = clamp(desired, 0, this.targetSpeed * 2.4);
-        if (typing.stallLeft > 0) desired = this.targetSpeed * 0.02;
+        desired = clamp(desired, 0, this.targetSpeed * 2.6);
         if (typing.boostLeft > 0) desired *= ADRENALINE_MULT;
-        const follow = typing.stallLeft > 0 ? 16 : 6.8;
-        this.speed = lerp(this.speed, desired, 1 - Math.exp(-follow * dt));
+        if (typing.stallLeft > 0) {
+          this.speed *= Math.exp(-2.4 * dt);
+        } else {
+          const follow = 11;
+          this.speed = lerp(this.speed, Math.max(desired, this.speed * 0.72), 1 - Math.exp(-follow * dt));
+        }
         this.player += this.speed * dt;
 
         if (!cfg.monsterOff) {
           const hunt = this.huntWpm(typing);
           let mSpeed = this.targetSpeed * (hunt / Math.max(cfg.targetWpm, 1)) * 0.94;
+          let wake = 0;
+          if (typing.startedAt) {
+            const age = (now - typing.startedAt) / 1000;
+            if (age < 2) wake = 0.3;
+            else if (age < 2.75) wake = lerp(0.3, 1, (age - 2) / 0.75);
+            else wake = 1;
+          }
+          mSpeed *= wake;
           const gap = this.player - this.monster;
-          if (gap > 240) mSpeed *= 1.12;
-          else if (gap < 70) mSpeed *= cfg.closeAccel || 1;
+          if (gap > 260) mSpeed *= 1.08;
+          else if (gap < 70 && wake >= 1) mSpeed *= cfg.closeAccel || 1;
           this.monster += mSpeed * dt;
         }
 
@@ -1192,6 +1224,7 @@
     steam: [],
     dust: [],
     shake: 0,
+    playerBias: 0.38,
 
     init(canvas) {
       this.canvas = canvas;
@@ -1232,14 +1265,15 @@
       });
     },
 
-    spawnDust(x, y, boost) {
+    spawnDust(x, y, boost, spark) {
       this.dust.push({
         x,
         y,
-        vx: -40 - Math.random() * 50 - (boost ? 40 : 0),
-        vy: -8 + Math.random() * 16,
+        vx: -40 - Math.random() * 50 - (boost ? 40 : 0) - (spark ? 20 : 0),
+        vy: -8 + Math.random() * 16 - (spark ? 22 : 0),
         life: 1,
-        size: 2 + Math.random() * 3,
+        size: (spark ? 1.4 : 2) + Math.random() * 3,
+        spark: !!spark,
       });
     },
 
@@ -1247,7 +1281,7 @@
       const ctx = this.ctx;
       const w = this.w;
       const h = this.h;
-      this.scroll += Math.max(18, race.speed) * dt * 0.55;
+      this.scroll += Math.max(0, race.speed) * dt * 1.55;
 
       const gap = race.player - race.monster;
       const prox = clamp(1 - gap / 180, 0, 1);
@@ -1255,6 +1289,10 @@
       const sx = (Math.random() - 0.5) * this.shake;
       const sy = (Math.random() - 0.5) * this.shake;
       const unit = clamp(h / 380, 0.85, 1.45);
+      const pace = clamp(race.speed / Math.max(race.targetSpeed, 8), 0, 1);
+      const targetBias = typing.stallLeft > 0 ? 0.35 : 0.35 + pace * 0.2;
+      const biasFollow = typing.stallLeft > 0 ? 3.2 : 6.5;
+      this.playerBias = lerp(this.playerBias, targetBias, 1 - Math.exp(-biasFollow * dt));
 
       ctx.save();
       ctx.translate(sx, sy);
@@ -1271,19 +1309,25 @@
       this.drawLights(ctx, w, horizon);
       this.drawFloor(ctx, w, h, horizon);
 
-      const playerX = w * 0.58;
+      const playerX = w * this.playerBias;
       const playerY = horizon + 6;
-      const t = clamp(gap / 260, 0, 1);
-      const monsterX = lerp(playerX - 50 * unit, 86 * unit, t);
-      const monsterScale = lerp(1.45, 0.88, t) * unit;
+      const t = clamp(gap / 175, 0, 1);
+      const monsterX = lerp(playerX - 36 * unit, -90 * unit, t);
+      const monsterScale = lerp(1.45, 0.72, t) * unit;
 
       this.drawMonster(ctx, monsterX, playerY + 8, monsterScale, prox);
-      this.drawPlayer(ctx, playerX, playerY, race.speed, typing.boostLeft > 0, unit);
+      this.drawPlayer(ctx, playerX, playerY, race, typing, unit);
+      if (race.footKick) {
+        this.spawnDust(playerX - 12 * unit, playerY + 62 * unit, typing.boostLeft > 0, false);
+        this.spawnDust(playerX - 4 * unit, playerY + 58 * unit, typing.boostLeft > 0, true);
+        this.spawnDust(playerX - 18 * unit, playerY + 64 * unit, typing.boostLeft > 0, true);
+        race.footKick = false;
+      }
       if (!race.diff.doorOff && !race.diff.endless) {
         this.drawDoor(ctx, w, h, horizon, race.doorOpen);
       }
       this.updateParticles(ctx, dt);
-      if (typing.boostLeft > 0) this.drawSpeedLines(ctx, w, h);
+      if (typing.boostLeft > 0 || race.speed > race.targetSpeed * 0.28) this.drawSpeedLines(ctx, w, h);
 
       ctx.restore();
 
@@ -1425,16 +1469,22 @@
       ctx.fill();
     },
 
-    drawPlayer(ctx, x, y, speed, boost, unit) {
-      const cadence = 0.55 + clamp(speed / 16, 0, 2.6);
+    drawPlayer(ctx, x, y, race, typing, unit) {
+      const speed = race.speed;
+      const boost = typing.boostLeft > 0;
+      const cadence = 0.4 + typing.burstCps(performance.now()) * 1.15 + clamp(speed / 12, 0, 2.4);
       const t = performance.now() / 1000;
       const swing = Math.sin(t * cadence * 10);
-      const bob = Math.abs(Math.sin(t * cadence * 10)) * 4 * unit;
+      const bob = Math.abs(Math.sin(t * cadence * 10)) * (2.2 + clamp(speed * 0.18, 0, 5)) * unit;
+      const lean = clamp(speed / Math.max(race.targetSpeed, 8), 0, 1.45);
 
-      if (speed > 1.5 && Math.random() < 0.45) this.spawnDust(x - 14 * unit, y + 62 * unit, boost);
+      if (speed > 0.8 && Math.random() < 0.28 + lean * 0.35) {
+        this.spawnDust(x - 14 * unit, y + 62 * unit, boost, Math.random() < 0.35);
+      }
 
       ctx.save();
       ctx.translate(x, y + bob);
+      ctx.rotate(lean * 0.2);
       ctx.scale(unit, unit);
 
       ctx.fillStyle = "rgba(0,0,0,0.35)";
@@ -1626,7 +1676,9 @@
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         if (p.life <= 0) return false;
-        ctx.fillStyle = `rgba(170, 160, 140, ${p.life * 0.45})`;
+        ctx.fillStyle = p.spark
+          ? `rgba(255, 210, 120, ${p.life * 0.85})`
+          : `rgba(170, 160, 140, ${p.life * 0.45})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
@@ -1875,7 +1927,7 @@
         targetWpm: lab.monsterOff ? 50 : Math.max(30, lab.monsterWpm),
         monsterWpm: lab.monsterWpm,
         monsterOff: lab.monsterOff,
-        startGap: 120,
+        startGap: 190,
         closeAccel: 1.08,
         stall: lab.stall,
         track,
@@ -1962,6 +2014,8 @@
       Renderer.dust = [];
       Renderer.shake = 0;
       Renderer.scroll = 0;
+      Renderer.playerBias = 0.38;
+      document.getElementById("canvas-wrap").classList.remove("sprinting");
 
       els.start.hidden = true;
       els.result.hidden = true;
@@ -1995,6 +2049,8 @@
       if (!result) return false;
       if (result === "ok" || result === "boost") AudioSystem.click();
       else if (result === "err" || result === "extra") AudioSystem.buzz();
+      if (result === "ok") this.race.nudge(true);
+      else if (result === "err" || result === "extra") this.race.nudge(false);
       WordsView.sync(this.typing);
       this.updateHud();
       return true;
@@ -2080,7 +2136,7 @@
           ? "SHIFT / AUTO"
           : `${t.adrenaline}/${ADRENALINE_WORDS} WORDS`;
 
-      const mapMin = r.diff.endless ? Math.max(0, r.player - 750) : -180;
+      const mapMin = r.diff.endless ? Math.max(0, r.player - 750) : -220;
       const mapSpan = r.diff.endless ? 1000 : (Number.isFinite(r.track) ? r.track : TRACK) - mapMin;
       const mapPct = (pos) => `${clamp((pos - mapMin) / Math.max(mapSpan, 1), 0, 1) * 100}%`;
       els.mapPlayer.style.left = mapPct(r.player);
@@ -2099,6 +2155,10 @@
       this.typing.tick(dt);
       this.race.update(dt, this.typing, ts);
       Renderer.draw(this.race, this.typing, dt);
+      document.getElementById("canvas-wrap").classList.toggle(
+        "sprinting",
+        this.race.speed > this.race.targetSpeed * 0.22
+      );
 
       const gap = this.race.player - this.race.monster;
       const proximity = clamp(1 - gap / 200, 0, 1);
