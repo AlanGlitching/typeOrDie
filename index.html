@@ -143,6 +143,8 @@
 
       <div id="canvas-wrap">
         <canvas id="game-canvas"></canvas>
+        <div id="horror-vignette" aria-hidden="true"></div>
+        <div id="slide-banner" hidden>SLIDE ESCAPE</div>
       </div>
 
       <div id="typing-panel">
@@ -157,7 +159,7 @@
           <div id="words"></div>
           <div id="caret" class="idle" aria-hidden="true"></div>
         </div>
-        <p id="focus-hint" class="focus-hint">Click here and type to run</p>
+        <p id="focus-hint" class="focus-hint">Press Tab + Enter to restart</p>
         <input
           id="mobile-input"
           type="text"
@@ -178,13 +180,20 @@
         <h2 id="result-title">EXTRACTED</h2>
         <p id="result-copy" class="lore"></p>
         <div class="result-grid">
-          <div><span>WPM</span><strong id="res-wpm">0</strong></div>
+          <div><span>Net WPM</span><strong id="res-wpm">0</strong></div>
+          <div><span>Raw WPM</span><strong id="res-raw">0</strong></div>
           <div><span>Accuracy</span><strong id="res-acc">0%</strong></div>
           <div><span>Time</span><strong id="res-time">0.0s</strong></div>
+          <div><span>Max Streak</span><strong id="res-streak">0</strong></div>
           <div><span>Distance</span><strong id="res-dist">0m</strong></div>
+        </div>
+        <div class="spark-block">
+          <span class="spark-label">PACE // WPM TIMELINE</span>
+          <canvas id="wpm-spark" width="560" height="88" aria-label="WPM over time"></canvas>
         </div>
         <p id="res-settings" class="settings-line"></p>
         <p id="result-record" class="record-line"></p>
+        <p class="hint restart-hint">Tab then Enter, or Esc, retries the same protocol.</p>
         <button id="btn-again" class="primary-btn" type="button">Re-enter Corridor</button>
       </div>
     </section>

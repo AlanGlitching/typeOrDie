@@ -829,6 +829,8 @@
       correctKeys: 0,
       recent: [],
       streak: 0,
+      maxStreak: 0,
+      wpmLog: [],
       adrenaline: 0,
       boostLeft: 0,
       stallLeft: 0,
@@ -887,6 +889,8 @@
         this.correctKeys = 0;
         this.recent = [];
         this.streak = 0;
+        this.maxStreak = 0;
+        this.wpmLog = [];
         this.adrenaline = 0;
         this.boostLeft = 0;
         this.stallLeft = 0;
@@ -970,6 +974,7 @@
         const clean = !this.wordHasError(i) && this.letterIndex >= word.length;
         if (clean) {
           this.streak += 1;
+          if (this.streak > this.maxStreak) this.maxStreak = this.streak;
           if (this.boostLeft <= 0) {
             this.adrenaline += 1;
             if (this.adrenaline >= ADRENALINE_WORDS) this.activateBoost();
@@ -1228,6 +1233,7 @@
       result: null,
       lastAccelMark: 0,
       footKick: false,
+      doorSecondsLeft: 99,
 
       nudge(ok) {
         if (!ok) {
@@ -1255,12 +1261,14 @@
 
         if (cfg.doorOff || !cfg.doorTime) {
           this.doorOpen = 1;
+          this.doorSecondsLeft = 99;
         } else {
           let rate = 1 / cfg.doorTime;
           if (cfg.doorAccelFinal && Number.isFinite(this.track) && this.player > this.track - 300) {
             rate *= 2.15;
           }
           this.doorOpen = clamp(this.doorOpen - rate * dt, 0, 1);
+          this.doorSecondsLeft = this.doorOpen / Math.max(rate, 0.0001);
         }
 
         const cps = typing.recentCps(now);
@@ -1324,6 +1332,13 @@
     dust: [],
     shake: 0,
     playerBias: 0.38,
+    stompClock: 0,
+    shakeX: 0,
+    shakeY: 0,
+    camZoom: 1,
+    lastPlayerX: 0,
+    lastPlayerY: 0,
+    slideT: 0,
 
     init(canvas) {
       this.canvas = canvas;
@@ -1364,6 +1379,25 @@
       });
     },
 
+    spawnWordBurst(x, y) {
+      const n = 6 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 70 + Math.random() * 140;
+        this.dust.push({
+          x,
+          y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 40,
+          life: 1,
+          size: 2 + Math.random() * 2.4,
+          spark: true,
+          neon: true,
+          hue: Math.random() < 0.5 ? "cyan" : "red",
+        });
+      }
+    },
+
     spawnDust(x, y, boost, spark) {
       this.dust.push({
         x,
@@ -1384,16 +1418,35 @@
 
       const gap = race.player - race.monster;
       const prox = clamp(1 - gap / 180, 0, 1);
-      this.shake = lerp(this.shake, prox * 8, 0.15);
-      const sx = (Math.random() - 0.5) * this.shake;
-      const sy = (Math.random() - 0.5) * this.shake;
+      const remain = Number.isFinite(race.track) ? race.track - race.player : 9999;
+      const sliding = this.slideT > 0;
+      const stride = 1.7 + clamp((30 - gap) / 30, 0, 1) * 2.4;
+      this.stompClock += dt * stride;
+      let stomp = false;
+      if (this.stompClock >= 1) {
+        this.stompClock -= 1;
+        stomp = true;
+      }
+      if (!race.diff.monsterOff && gap < 30 && stomp) {
+        this.shakeX = (Math.random() < 0.5 ? -1 : 1) * (2 + Math.random() * 2);
+        this.shakeY = (Math.random() < 0.5 ? -1 : 1) * (2 + Math.random() * 2);
+      }
+      this.shakeX = lerp(this.shakeX, 0, 1 - Math.exp(-16 * dt));
+      this.shakeY = lerp(this.shakeY, 0, 1 - Math.exp(-16 * dt));
+      const sx = this.shakeX;
+      const sy = this.shakeY;
       const unit = clamp(h / 380, 0.85, 1.45);
       const pace = clamp(race.speed / Math.max(race.targetSpeed, 8), 0, 1);
       const targetBias = typing.stallLeft > 0 ? 0.35 : 0.35 + pace * 0.2;
       const biasFollow = typing.stallLeft > 0 ? 3.2 : 6.5;
-      this.playerBias = lerp(this.playerBias, targetBias, 1 - Math.exp(-biasFollow * dt));
+      this.playerBias = lerp(this.playerBias, sliding ? 0.62 : targetBias, 1 - Math.exp(-biasFollow * dt));
+      const zoomGoal = remain < 60 && remain > -4 && Number.isFinite(race.track) ? 1 + 0.08 * clamp(1 - remain / 60, 0, 1) : 1;
+      this.camZoom = lerp(this.camZoom, sliding ? 1.12 : zoomGoal, 1 - Math.exp(-4.5 * dt));
 
       ctx.save();
+      ctx.translate(w * 0.68, h * 0.52);
+      ctx.scale(this.camZoom, this.camZoom);
+      ctx.translate(-w * 0.68, -h * 0.52);
       ctx.translate(sx, sy);
 
       const horizon = h * 0.54;
@@ -1410,6 +1463,8 @@
 
       const playerX = w * this.playerBias;
       const playerY = horizon + 6;
+      this.lastPlayerX = playerX;
+      this.lastPlayerY = playerY;
       const t = clamp(gap / 175, 0, 1);
       const monsterX = lerp(playerX - 36 * unit, -90 * unit, t);
       const monsterScale = lerp(1.45, 0.72, t) * unit;
@@ -1423,7 +1478,7 @@
         race.footKick = false;
       }
       if (!race.diff.doorOff && !race.diff.endless) {
-        this.drawDoor(ctx, w, h, horizon, race.doorOpen);
+        this.drawDoor(ctx, w, h, horizon, race.doorOpen, sliding);
       }
       this.updateParticles(ctx, dt);
       if (typing.boostLeft > 0 || race.speed > race.targetSpeed * 0.28) this.drawSpeedLines(ctx, w, h);
@@ -1576,15 +1631,32 @@
       const swing = Math.sin(t * cadence * 10);
       const bob = Math.abs(Math.sin(t * cadence * 10)) * (2.2 + clamp(speed * 0.18, 0, 5)) * unit;
       const lean = clamp(speed / Math.max(race.targetSpeed, 8), 0, 1.45);
+      const sliding = this.slideT > 0;
+      const slideK = clamp(this.slideT, 0, 1);
 
       if (speed > 0.8 && Math.random() < 0.28 + lean * 0.35) {
         this.spawnDust(x - 14 * unit, y + 62 * unit, boost, Math.random() < 0.35);
       }
 
       ctx.save();
-      ctx.translate(x, y + bob);
-      ctx.rotate(lean * 0.2);
+      ctx.translate(x, y + bob + (sliding ? 10 * slideK * unit : 0));
+      ctx.rotate(lean * 0.2 + (sliding ? 0.55 * slideK : 0));
       ctx.scale(unit, unit);
+
+      if (typing.streak >= 10) {
+        const ghosts = [
+          { dx: -18, dy: 2, color: "rgba(255, 40, 70, 0.22)" },
+          { dx: -28, dy: -1, color: "rgba(0, 255, 220, 0.18)" },
+          { dx: -38, dy: 3, color: "rgba(120, 160, 255, 0.12)" },
+        ];
+        ghosts.forEach((g) => {
+          ctx.fillStyle = g.color;
+          ctx.beginPath();
+          ctx.roundRect(-11 + g.dx, 2 + g.dy, 26, 30, 5);
+          ctx.fill();
+          ctx.fillRect(-8 + g.dx, -16 + g.dy, 24, 18);
+        });
+      }
 
       ctx.fillStyle = "rgba(0,0,0,0.35)";
       ctx.beginPath();
@@ -1712,7 +1784,7 @@
       ctx.restore();
     },
 
-    drawDoor(ctx, w, h, horizon, open) {
+    drawDoor(ctx, w, h, horizon, open, sliding) {
       const closed = 1 - open;
       const doorW = Math.max(86, w * 0.11);
       const x = w - doorW - 14;
@@ -1749,7 +1821,21 @@
       ctx.font = "10px ui-monospace, monospace";
       ctx.fillText("GATE", x + 14, 28);
 
-      if (Math.random() < 0.12) this.spawnSteam(x + 16, drop);
+      if (Math.random() < (sliding ? 0.55 : 0.12)) this.spawnSteam(x + 16, drop);
+      if (sliding) {
+        for (let i = 0; i < 3; i++) {
+          this.dust.push({
+            x: x + 10 + Math.random() * (doorW - 20),
+            y: drop + 4,
+            vx: -80 - Math.random() * 90,
+            vy: 20 + Math.random() * 40,
+            life: 1,
+            size: 1.6 + Math.random() * 2,
+            spark: true,
+            neon: true,
+          });
+        }
+      }
       if (Math.sin(performance.now() / 130) > 0) {
         ctx.fillStyle = "#ff3b4e";
         ctx.fillRect(x + 16, 36, 12, 12);
@@ -1775,9 +1861,11 @@
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         if (p.life <= 0) return false;
-        ctx.fillStyle = p.spark
-          ? `rgba(255, 210, 120, ${p.life * 0.85})`
-          : `rgba(170, 160, 140, ${p.life * 0.45})`;
+        ctx.fillStyle = p.neon
+          ? (p.hue === "red" ? `rgba(255, 70, 120, ${p.life * 0.85})` : `rgba(0, 255, 210, ${p.life * 0.9})`)
+          : p.spark
+            ? `rgba(255, 210, 120, ${p.life * 0.85})`
+            : `rgba(170, 160, 140, ${p.life * 0.45})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
@@ -1832,9 +1920,14 @@
     resCopy: $("result-copy"),
     resEye: $("result-eyebrow"),
     resWpm: $("res-wpm"),
+    resRaw: $("res-raw"),
     resAcc: $("res-acc"),
     resTime: $("res-time"),
+    resStreak: $("res-streak"),
     resDist: $("res-dist"),
+    spark: $("wpm-spark"),
+    vignette: $("horror-vignette"),
+    slideBanner: $("slide-banner"),
     resSettings: $("res-settings"),
     resRecord: $("result-record"),
     endlessBtn: $("btn-endless"),
@@ -1865,6 +1958,10 @@
     lastTs: 0,
     hudAcc: 0,
     handledByKey: false,
+    tabArmed: false,
+    runCfg: null,
+    sampleAcc: 0,
+    sliding: false,
 
     boot() {
       Renderer.init(els.canvas);
@@ -1940,6 +2037,13 @@
       window.addEventListener("resize", onViewport);
       window.visualViewport?.addEventListener("resize", onViewport);
       window.visualViewport?.addEventListener("scroll", onViewport);
+
+      document.addEventListener("pointerdown", () => {
+        if (this.state !== "playing") return;
+        requestAnimationFrame(() => this.focusInput());
+      });
+
+      window.addEventListener("keydown", (e) => this.onFlowKey(e), true);
 
       window.addEventListener("keydown", (e) => {
         if (this.state !== "start") return;
@@ -2048,9 +2152,11 @@
     focusInput() {
       els.input.focus({ preventScroll: true });
       els.hint.classList.remove("touch-needed");
-      els.hint.textContent = isTouchDevice()
-        ? "Tap the text to keep the keyboard open"
-        : "Type to run · Space next word · Backspace corrects · Shift boosts";
+      if (!this.tabArmed) {
+        els.hint.textContent = isTouchDevice()
+          ? "Tap the text to keep the keyboard open"
+          : "Press Tab + Enter to restart";
+      }
     },
 
     onInputBlur() {
@@ -2065,10 +2171,67 @@
       }, 0);
     },
 
+    onFlowKey(e) {
+      const inRun = this.state === "playing";
+      const inResult = this.state === "victory" || this.state === "defeat";
+      if (!inRun && !inResult) return;
+      if (e.key === "Tab") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.armRestart();
+        return;
+      }
+      if (e.key === "Enter" && this.tabArmed) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.retryRun();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.retryRun();
+      }
+    },
+
+    armRestart() {
+      this.tabArmed = true;
+      if (els.hint) {
+        els.hint.classList.add("restart-armed");
+        els.hint.textContent = isTouchDevice()
+          ? "Tap the text to keep the keyboard open"
+          : "Press Enter to confirm restart";
+      }
+      clearTimeout(this.tabTimer);
+      this.tabTimer = setTimeout(() => {
+        this.tabArmed = false;
+        if (els.hint) {
+          els.hint.classList.remove("restart-armed");
+          if (this.state === "playing") {
+            els.hint.textContent = isTouchDevice()
+              ? "Tap the text to keep the keyboard open"
+              : "Press Tab + Enter to restart";
+          }
+        }
+      }, 1400);
+    },
+
+    retryRun() {
+      this.tabArmed = false;
+      clearTimeout(this.tabTimer);
+      if (els.hint) els.hint.classList.remove("restart-armed");
+      if (!this.runCfg) {
+        this.toStart();
+        return;
+      }
+      this.start(this.runCfg);
+    },
+
     toggleMute() {
       AudioSystem.resume();
       AudioSystem.toggle();
       this.syncMuteButtons();
+      if (this.state === "playing") this.focusInput();
     },
 
     syncMuteButtons() {
@@ -2100,6 +2263,21 @@
 
     start(cfg) {
       if (!cfg) return;
+      this.runCfg = cfg;
+      this.tabArmed = false;
+      this.sliding = false;
+      this.sampleAcc = 0;
+      Renderer.slideT = 0;
+      Renderer.camZoom = 1;
+      Renderer.shakeX = 0;
+      Renderer.shakeY = 0;
+      Renderer.stompClock = 0;
+      if (els.slideBanner) els.slideBanner.hidden = true;
+      if (els.vignette) {
+        els.vignette.style.setProperty("--vig", "0");
+        els.vignette.classList.remove("pulse");
+      }
+      document.getElementById("canvas-wrap").classList.remove("sliding");
       AudioSystem.resume();
       AudioSystem.stopAmbience();
       AudioSystem.startAmbience();
@@ -2153,6 +2331,9 @@
       else if (result === "err" || result === "extra") AudioSystem.buzz();
       if (result === "ok") this.race.nudge(true);
       else if (result === "err" || result === "extra") this.race.nudge(false);
+      if (key === " " && result === "ok") {
+        Renderer.spawnWordBurst(Renderer.lastPlayerX, Renderer.lastPlayerY + 58);
+      }
       WordsView.sync(this.typing);
       this.updateHud();
       return true;
@@ -2254,6 +2435,20 @@
       const dt = clamp((ts - this.lastTs) / 1000, 0, 0.05);
       this.lastTs = ts;
 
+      if (this.sliding) {
+        Renderer.slideT = clamp(Renderer.slideT + dt / 0.5, 0, 1);
+        Renderer.draw(this.race, this.typing, dt);
+        if (Renderer.slideT >= 1) {
+          this.sliding = false;
+          if (els.slideBanner) els.slideBanner.hidden = true;
+          document.getElementById("canvas-wrap").classList.remove("sliding");
+          this.finish("win");
+          return;
+        }
+        this.raf = requestAnimationFrame((t) => this.loop(t));
+        return;
+      }
+
       this.typing.tick(dt);
       this.race.update(dt, this.typing, ts);
       Renderer.draw(this.race, this.typing, dt);
@@ -2268,13 +2463,86 @@
       const remain = Number.isFinite(this.race.track) ? this.race.track - this.race.player : 9999;
       AudioSystem.updateMusic(gap, remain, this.typing.boostLeft > 0);
 
+      if (els.vignette) {
+        const vig = gap < 40 ? clamp((40 - gap) / 40, 0, 1) : 0;
+        els.vignette.style.setProperty("--vig", String(vig));
+        els.vignette.classList.toggle("pulse", vig > 0 && gap < 15);
+      }
+
+      if (this.typing.startedAt) {
+        this.sampleAcc += dt;
+        if (this.sampleAcc >= 0.35) {
+          this.sampleAcc = 0;
+          const instant = (this.typing.recentCps(ts) * 60) / 5;
+          this.typing.wpmLog.push(instant);
+        }
+      }
+
       this.updateHud();
+
+      if (this.race.result === "win" && this.race.doorSecondsLeft < 2 && !this.race.diff.doorOff && !this.race.diff.endless) {
+        this.race.result = null;
+        this.sliding = true;
+        Renderer.slideT = 0.001;
+        if (els.slideBanner) els.slideBanner.hidden = false;
+        document.getElementById("canvas-wrap").classList.add("sliding");
+        this.raf = requestAnimationFrame((t) => this.loop(t));
+        return;
+      }
 
       if (this.race.result) {
         this.finish(this.race.result);
         return;
       }
       this.raf = requestAnimationFrame((t) => this.loop(t));
+    },
+
+    drawSparkline(samples) {
+      const canvas = els.spark;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(8, 12, 18, 0.9)";
+      ctx.fillRect(0, 0, w, h);
+      const data = samples && samples.length ? samples : [0];
+      const max = Math.max(20, ...data);
+      const point = (i) => {
+        const x = data.length === 1 ? 4 : (i / (data.length - 1)) * (w - 8) + 4;
+        const y = h - 6 - (clamp(data[i], 0, max) / max) * (h - 14);
+        return [x, y];
+      };
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.lineWidth = 1;
+      for (let i = 1; i <= 3; i++) {
+        const y = (h * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      data.forEach((_, i) => {
+        const [x, y] = point(i);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      const last = point(data.length - 1);
+      ctx.lineTo(last[0], h - 6);
+      ctx.lineTo(4, h - 6);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(61, 255, 208, 0.12)";
+      ctx.fill();
+      ctx.beginPath();
+      data.forEach((_, i) => {
+        const [x, y] = point(i);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = "#3dffd0";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     },
 
     finish(result) {
@@ -2313,10 +2581,13 @@
           : result === "lose-door"
             ? "The blast door sealed with you still in the corridor. The rumble is the last thing on the tape."
             : "Experiment-09 closed the gap. The logs end in static and a wet impact.";
-      els.resWpm.textContent = Math.round(entry.wpm);
+      els.resWpm.textContent = String(Math.round(this.typing.wpm()));
+      els.resRaw.textContent = String(Math.round(this.typing.rawWpm()));
       els.resAcc.textContent = `${Math.round(entry.accuracy)}%`;
       els.resTime.textContent = formatTime(entry.time);
+      els.resStreak.textContent = String(this.typing.maxStreak);
       els.resDist.textContent = `${Math.round(this.race.player)}m`;
+      this.drawSparkline(this.typing.wpmLog);
       const hunt = cfg.monsterOff ? "hunt off" : `${cfg.monsterWpm} WPM hunt`;
       const door = cfg.doorOff || cfg.endless ? "door off" : `${Math.round(cfg.doorTime)}s door`;
       els.resSettings.textContent = `${cfg.name}${cfg.endless ? " · Endless" : ""} · ${hunt} · ${door} · stall ${cfg.stall.toFixed(1)}s · ${cfg.textMode || "mix"} text`;
