@@ -64,21 +64,6 @@
     return a + (b - a) * t;
   }
 
-  function escapeHtml(s) {
-    return s.replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    }[c]));
-  }
-
-  function displayChar(ch) {
-    if (ch === " ") return "&nbsp;";
-    return escapeHtml(ch);
-  }
-
   function formatTime(sec) {
     const s = Math.max(0, sec);
     const m = Math.floor(s / 60);
@@ -281,49 +266,72 @@
   /* Typing                                                              */
   /* ------------------------------------------------------------------ */
 
+  function tokenize(text) {
+    return text.trim().split(/\s+/).filter(Boolean);
+  }
+
   function createTyping() {
     return {
       bag: [],
-      text: "",
-      index: 0,
+      words: [],
+      states: [],
+      extras: [],
+      wordIndex: 0,
+      letterIndex: 0,
       errored: false,
       totalKeys: 0,
       correctKeys: 0,
       recent: [],
       streak: 0,
-      wordHadError: false,
-      wordStarted: false,
       adrenaline: 0,
       boostLeft: 0,
       stallLeft: 0,
       startedAt: 0,
+      dirty: [0],
 
-      nextPassage() {
-        if (this.bag.length === 0) {
-          this.bag = PASSAGES.map((_, i) => i);
-          for (let i = this.bag.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
-          }
+      refillBag() {
+        this.bag = PASSAGES.map((_, i) => i);
+        for (let i = this.bag.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
         }
-        this.text = PASSAGES[this.bag.pop()];
-        this.index = 0;
-        this.errored = false;
+      },
+
+      pushWords(list) {
+        list.forEach((word) => {
+          this.words.push(word);
+          this.states.push(Array(word.length).fill(""));
+          this.extras.push("");
+        });
+      },
+
+      appendPassage() {
+        if (this.bag.length === 0) this.refillBag();
+        this.pushWords(tokenize(PASSAGES[this.bag.pop()]));
+      },
+
+      ensureWords() {
+        while (this.words.length - this.wordIndex < 48) this.appendPassage();
       },
 
       start() {
         this.bag = [];
-        this.nextPassage();
+        this.words = [];
+        this.states = [];
+        this.extras = [];
+        this.wordIndex = 0;
+        this.letterIndex = 0;
+        this.errored = false;
         this.totalKeys = 0;
         this.correctKeys = 0;
         this.recent = [];
         this.streak = 0;
-        this.wordHadError = false;
-        this.wordStarted = false;
         this.adrenaline = 0;
         this.boostLeft = 0;
         this.stallLeft = 0;
         this.startedAt = performance.now();
+        this.ensureWords();
+        this.dirty = [0];
       },
 
       elapsedMin() {
@@ -345,23 +353,55 @@
         return this.recent.length / 2;
       },
 
-      completeWord() {
-        if (this.wordStarted && !this.wordHadError) {
-          this.streak += 1;
-          if (this.boostLeft <= 0) {
-            this.adrenaline += 1;
-            if (this.adrenaline >= ADRENALINE_WORDS) this.activateBoost();
-          }
-        } else if (this.wordHadError) {
-          this.streak = 0;
-        }
-        this.wordHadError = false;
-        this.wordStarted = false;
+      markDirty(i) {
+        if (!this.dirty.includes(i)) this.dirty.push(i);
+      },
+
+      currentWord() {
+        return this.words[this.wordIndex] || "";
+      },
+
+      wordHasError(i) {
+        const extras = this.extras[i] || "";
+        return extras.length > 0 || (this.states[i] || []).some((s) => s === "incorrect" || s === "missed");
       },
 
       activateBoost() {
         this.boostLeft = ADRENALINE_SEC;
         this.adrenaline = ADRENALINE_WORDS;
+      },
+
+      penalize() {
+        this.errored = true;
+        this.streak = 0;
+        if (this.boostLeft <= 0) this.adrenaline = 0;
+        this.stallLeft = STALL_SEC;
+      },
+
+      finishWord() {
+        const i = this.wordIndex;
+        const word = this.words[i];
+        if (this.letterIndex < word.length) {
+          for (let li = this.letterIndex; li < word.length; li++) this.states[i][li] = "missed";
+        }
+        const clean = !this.wordHasError(i) && this.letterIndex >= word.length;
+        if (clean) {
+          this.streak += 1;
+          if (this.boostLeft <= 0) {
+            this.adrenaline += 1;
+            if (this.adrenaline >= ADRENALINE_WORDS) this.activateBoost();
+          }
+        } else {
+          this.streak = 0;
+          if (this.boostLeft <= 0) this.adrenaline = 0;
+        }
+        this.markDirty(i);
+        this.wordIndex += 1;
+        this.letterIndex = 0;
+        this.errored = !clean;
+        this.ensureWords();
+        this.markDirty(this.wordIndex);
+        return clean ? "ok" : "err";
       },
 
       handleKey(key, now) {
@@ -372,35 +412,80 @@
           }
           return null;
         }
+        if (key === "Backspace") return this.backspace();
+        if (key === " ") return this.space();
         if (key.length !== 1) return null;
+        return this.typeChar(key, now);
+      },
 
-        const target = this.text[this.index];
-        if (target == null) return null;
-
+      typeChar(key, now) {
+        const word = this.currentWord();
+        if (!word) return null;
+        const i = this.wordIndex;
         this.totalKeys += 1;
-        if (key === target) {
+
+        if (this.letterIndex >= word.length) {
+          if (this.extras[i].length >= 12) return "extra";
+          this.extras[i] += key;
+          this.markDirty(i);
+          this.penalize();
+          return "extra";
+        }
+
+        if (key === word[this.letterIndex]) {
+          this.states[i][this.letterIndex] = "correct";
           this.correctKeys += 1;
           this.recent.push(now);
           this.errored = false;
-          if (key === " ") {
-            this.completeWord();
-          } else {
-            this.wordStarted = true;
-          }
-          this.index += 1;
-          if (this.index >= this.text.length) {
-            this.completeWord();
-            this.nextPassage();
-          }
-          return "ok";
+        } else {
+          this.states[i][this.letterIndex] = "incorrect";
+          this.penalize();
         }
+        this.letterIndex += 1;
+        this.markDirty(i);
+        return this.errored ? "err" : "ok";
+      },
 
-        this.errored = true;
-        this.wordHadError = true;
-        this.streak = 0;
-        if (this.boostLeft <= 0) this.adrenaline = 0;
-        this.stallLeft = STALL_SEC;
-        return "err";
+      space() {
+        if (this.letterIndex === 0 && !(this.extras[this.wordIndex] || "")) return null;
+        if (this.letterIndex < this.currentWord().length) this.penalize();
+        return this.finishWord();
+      },
+
+      backspace() {
+        const i = this.wordIndex;
+        if (this.extras[i]) {
+          this.extras[i] = this.extras[i].slice(0, -1);
+          this.markDirty(i);
+          this.errored = this.wordHasError(i);
+          return "back";
+        }
+        if (this.letterIndex > 0) {
+          this.letterIndex -= 1;
+          const wasCorrect = this.states[i][this.letterIndex] === "correct";
+          if (wasCorrect) this.correctKeys = Math.max(0, this.correctKeys - 1);
+          this.states[i][this.letterIndex] = "";
+          this.totalKeys = Math.max(0, this.totalKeys - 1);
+          this.markDirty(i);
+          this.errored = this.wordHasError(i);
+          return "back";
+        }
+        if (i === 0) return "back";
+        const prev = i - 1;
+        if (!this.wordHasError(prev)) return "back";
+        this.wordIndex = prev;
+        this.letterIndex = this.words[prev].length;
+        this.states[prev] = this.states[prev].map((s) => (s === "missed" ? "" : s));
+        while (
+          this.letterIndex > 0 &&
+          !this.states[prev][this.letterIndex - 1]
+        ) {
+          this.letterIndex -= 1;
+        }
+        this.errored = this.wordHasError(prev);
+        this.markDirty(prev);
+        this.markDirty(i);
+        return "back";
       },
 
       tick(dt) {
@@ -412,6 +497,115 @@
       },
     };
   }
+
+  const WordsView = {
+    scrollY: 0,
+    idleTimer: 0,
+
+    mount() {
+      this.container = $("words-container");
+      this.list = $("words");
+      this.caret = $("caret");
+    },
+
+    rebuild(typing) {
+      this.list.replaceChildren();
+      typing.words.forEach((word, wi) => {
+        this.list.appendChild(this.makeWord(word, typing.states[wi], typing.extras[wi]));
+      });
+      this.scrollY = 0;
+      this.list.style.transform = "translateY(0)";
+      this.container.classList.remove("scrolled");
+      this.sync(typing, true);
+    },
+
+    makeWord(word, states, extras) {
+      const wrap = document.createElement("span");
+      wrap.className = "word";
+      for (let i = 0; i < word.length; i++) {
+        wrap.appendChild(this.makeLetter(word[i], states[i]));
+      }
+      for (const ch of extras || "") {
+        wrap.appendChild(this.makeLetter(ch, "extra"));
+      }
+      return wrap;
+    },
+
+    makeLetter(ch, state) {
+      const el = document.createElement("span");
+      el.className = "letter";
+      if (state && state !== "") el.classList.add(state === "missed" ? "incorrect" : state);
+      el.textContent = ch;
+      return el;
+    },
+
+    appendNewWords(typing) {
+      while (this.list.children.length < typing.words.length) {
+        const i = this.list.children.length;
+        this.list.appendChild(this.makeWord(typing.words[i], typing.states[i], typing.extras[i]));
+      }
+    },
+
+    paintWord(typing, i) {
+      const wordEl = this.list.children[i];
+      if (!wordEl) return;
+      const next = this.makeWord(typing.words[i], typing.states[i], typing.extras[i]);
+      wordEl.replaceWith(next);
+    },
+
+    lineHeight() {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue("--line-h");
+      const n = parseFloat(raw);
+      return Number.isFinite(n) && n > 0 ? n : 42;
+    },
+
+    sync(typing, instant) {
+      this.appendNewWords(typing);
+      const dirty = typing.dirty.splice(0);
+      dirty.forEach((i) => this.paintWord(typing, i));
+
+      const wordEl = this.list.children[typing.wordIndex];
+      if (!wordEl) return;
+      const letters = wordEl.querySelectorAll(".letter");
+      const extras = typing.extras[typing.wordIndex] || "";
+      let anchor = letters[0];
+      let after = false;
+      if (extras.length && letters.length) {
+        anchor = letters[letters.length - 1];
+        after = true;
+      } else if (typing.letterIndex > 0 && typing.letterIndex >= (typing.words[typing.wordIndex] || "").length) {
+        anchor = letters[Math.max(0, typing.letterIndex - 1)] || letters[letters.length - 1];
+        after = true;
+      } else if (letters[typing.letterIndex]) {
+        anchor = letters[typing.letterIndex];
+      }
+
+      if (!anchor) return;
+      const x = anchor.offsetLeft + (after ? anchor.offsetWidth : 0);
+      const y = anchor.offsetTop;
+      const lh = this.lineHeight();
+      const line = Math.round(y / lh);
+      const target = line >= 1 ? (line - 1) * lh : 0;
+      if (instant) {
+        this.caret.style.transition = "none";
+        this.list.style.transition = "none";
+      }
+      this.scrollY = target;
+      this.list.style.transform = `translateY(-${target}px)`;
+      this.container.classList.toggle("scrolled", target > 0);
+      this.caret.style.left = `${x}px`;
+      this.caret.style.top = `${y - target}px`;
+      if (instant) {
+        void this.list.offsetWidth;
+        this.caret.style.removeProperty("transition");
+        this.list.style.removeProperty("transition");
+      }
+
+      this.caret.classList.remove("idle");
+      clearTimeout(this.idleTimer);
+      this.idleTimer = setTimeout(() => this.caret.classList.add("idle"), 520);
+    },
+  };
 
   /* ------------------------------------------------------------------ */
   /* Race                                                                */
@@ -952,7 +1146,6 @@
     result: $("result-modal"),
     resultPanel: document.querySelector(".result-panel"),
     scores: $("high-scores"),
-    passage: $("passage"),
     input: $("hidden-input"),
     canvas: $("game-canvas"),
     wpm: $("stat-wpm"),
@@ -991,6 +1184,7 @@
 
     boot() {
       Renderer.init(els.canvas);
+      WordsView.mount();
       this.renderScores();
       this.syncMuteButtons();
 
@@ -1015,7 +1209,10 @@
         if (this.state === "playing") els.input.focus();
       });
 
-      window.addEventListener("resize", () => Renderer.resize());
+      window.addEventListener("resize", () => {
+        Renderer.resize();
+        if (this.state === "playing") WordsView.sync(this.typing, true);
+      });
       window.addEventListener("keydown", (e) => {
         if (this.state !== "start") return;
         const map = { 1: "scout", 2: "operative", 3: "nightmare" };
@@ -1067,12 +1264,15 @@
       els.start.hidden = true;
       els.result.hidden = true;
       els.game.hidden = false;
-      this.renderPassage();
+      WordsView.rebuild(this.typing);
       this.updateHud();
-      requestAnimationFrame(() => Renderer.resize());
+      requestAnimationFrame(() => {
+        Renderer.resize();
+        WordsView.sync(this.typing, true);
+      });
       els.input.value = "";
       els.input.focus();
-      els.hint.textContent = "Type the highlighted letter · Shift boosts a full gauge";
+      els.hint.textContent = "Type to run · Space next word · Backspace corrects · Shift boosts";
 
       cancelAnimationFrame(this.raf);
       this.raf = requestAnimationFrame((t) => this.loop(t));
@@ -1093,8 +1293,8 @@
       const result = this.typing.handleKey(key, performance.now());
       if (!result) return false;
       if (result === "ok" || result === "boost") AudioSystem.click();
-      else if (result === "err") AudioSystem.buzz();
-      this.renderPassage();
+      else if (result === "err" || result === "extra") AudioSystem.buzz();
+      WordsView.sync(this.typing);
       return true;
     },
 
@@ -1105,7 +1305,10 @@
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (this.applyKey(e.key)) e.preventDefault();
+      const tracked = e.key === "Backspace" || e.key === " " || e.key === "Shift" || e.key.length === 1;
+      if (!tracked) return;
+      e.preventDefault();
+      this.applyKey(e.key);
     },
 
     onTextInput() {
@@ -1113,17 +1316,6 @@
       els.input.value = "";
       if (this.state !== "playing" || !val) return;
       for (const ch of val) this.applyKey(ch);
-    },
-
-    renderPassage() {
-      const t = this.typing;
-      const done = t.text.slice(0, t.index);
-      const cur = t.text[t.index] || "";
-      const rest = t.text.slice(t.index + 1);
-      els.passage.innerHTML =
-        `<span class="done">${[...done].map(displayChar).join("")}</span>` +
-        (cur ? `<span class="current${t.errored ? " error" : ""}">${displayChar(cur)}</span>` : "") +
-        `<span class="rest">${[...rest].map(displayChar).join("")}</span>`;
     },
 
     updateHud() {
