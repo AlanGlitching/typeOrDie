@@ -280,6 +280,7 @@
 
   function saveScores(scores) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
+    if (typeof SaveStore !== "undefined") SaveStore.persist();
   }
 
   function addScore(entry) {
@@ -301,6 +302,8 @@
 
   const CREDITS_KEY = "typing_credits";
   const COSMETICS_KEY = "etb-cosmetics";
+  const SAVE_KEY = "ETB_SAVE_DATA";
+  const SAVE_PREFIX = "ETB-v1-";
   const PULL_COST = 500;
   const TEN_COST = 4500;
   const DUP_REFUND = 150;
@@ -382,6 +385,7 @@
       localStorage.setItem("equippedRunnerSkin", this.equipped.runner);
       localStorage.setItem("equippedMonsterSkin", this.equipped.monster);
       localStorage.setItem("equippedBackground", this.equipped.sector);
+      if (typeof SaveStore !== "undefined") SaveStore.persist();
     },
 
     find(slot, id) {
@@ -625,6 +629,7 @@
         rewardedLevel: this.rewardedLevel,
         milestones: this.milestones,
       }));
+      if (typeof SaveStore !== "undefined") SaveStore.persist();
     },
 
     addTitle(name) {
@@ -698,6 +703,317 @@
         }
       });
       Cosmetics.syncPullButtons();
+    },
+  };
+
+  const SaveStore = {
+    records: { bestWpm: 0, maxStreak: 0, longestEndless: 0 },
+    writing: false,
+    ready: false,
+
+    snapshot() {
+      const snap = Progress.snapshot();
+      return {
+        version: 1,
+        level: snap.level,
+        totalXp: Progress.totalXp,
+        credits: Cosmetics.credits,
+        unlockedSkins: {
+          runner: [...Cosmetics.owned.runner],
+          monster: [...Cosmetics.owned.monster],
+          sector: [...Cosmetics.owned.sector],
+        },
+        equipped: { ...Cosmetics.equipped },
+        title: Progress.title,
+        titles: [...Progress.titles],
+        freePulls: Progress.freePulls,
+        rewardedLevel: Progress.rewardedLevel,
+        milestones: [...Progress.milestones],
+        records: { ...this.records },
+        scores: loadScores(),
+        savedAt: Date.now(),
+      };
+    },
+
+    persist() {
+      if (this.writing || !this.ready) return;
+      this.writing = true;
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(this.snapshot()));
+      } catch { /* quota */ }
+      finally { this.writing = false; }
+    },
+
+    encode(data) {
+      const json = JSON.stringify(data || this.snapshot());
+      const bytes = unescape(encodeURIComponent(json));
+      return SAVE_PREFIX + btoa(bytes);
+    },
+
+    decode(text) {
+      let raw = String(text || "").trim();
+      if (raw.startsWith(SAVE_PREFIX)) raw = raw.slice(SAVE_PREFIX.length);
+      const json = decodeURIComponent(escape(atob(raw)));
+      return JSON.parse(json);
+    },
+
+    validate(data) {
+      if (!data || typeof data !== "object") return false;
+      if (!Number.isFinite(Number(data.level))) return false;
+      if (!Number.isFinite(Number(data.credits))) return false;
+      return !!(data.unlockedSkins && typeof data.unlockedSkins === "object");
+    },
+
+    xpFloorFor(level) {
+      const target = Math.max(1, Math.floor(level || 1));
+      let xp = 0;
+      for (let lv = 1; lv < target; lv++) xp += Progress.xpToNext(lv);
+      return xp;
+    },
+
+    apply(data, persistAfter) {
+      const skins = data.unlockedSkins || data.owned || {};
+      Cosmetics.credits = Math.max(0, Math.floor(Number(data.credits) || 0));
+      Cosmetics.display = Cosmetics.credits;
+      Cosmetics.owned = {
+        runner: Array.isArray(skins.runner) ? skins.runner.slice() : ["cyan"],
+        monster: Array.isArray(skins.monster) ? skins.monster.slice() : ["ink"],
+        sector: Array.isArray(skins.sector) ? skins.sector.slice() : ["industrial"],
+      };
+      const eq = data.equipped || {};
+      Cosmetics.equipped = {
+        runner: eq.runner || "cyan",
+        monster: eq.monster || "ink",
+        sector: eq.sector || "industrial",
+      };
+      ["runner", "monster", "sector"].forEach((slot) => {
+        const fallback = slot === "runner" ? "cyan" : slot === "monster" ? "ink" : "industrial";
+        if (!Cosmetics.owned[slot].includes(fallback)) Cosmetics.owned[slot].unshift(fallback);
+        if (!Cosmetics.find(slot, Cosmetics.equipped[slot])) Cosmetics.equipped[slot] = fallback;
+        if (!Cosmetics.owned[slot].includes(Cosmetics.equipped[slot])) Cosmetics.equipped[slot] = fallback;
+      });
+
+      let totalXp = Math.max(0, Math.floor(Number(data.totalXp) || 0));
+      const levelHint = Math.max(1, Math.floor(Number(data.level) || 1));
+      if (!Number(data.totalXp) && levelHint > 1) totalXp = this.xpFloorFor(levelHint);
+      Progress.totalXp = totalXp;
+      Progress.titles = Array.isArray(data.titles) && data.titles.length ? data.titles.slice() : [DEFAULT_TITLE];
+      if (!Progress.titles.includes(DEFAULT_TITLE)) Progress.titles.unshift(DEFAULT_TITLE);
+      Progress.title = data.title && Progress.titles.includes(data.title)
+        ? data.title
+        : Progress.titles[Progress.titles.length - 1];
+      Progress.freePulls = Math.max(0, Math.floor(Number(data.freePulls) || 0));
+      Progress.milestones = Array.isArray(data.milestones)
+        ? data.milestones.map((n) => Math.floor(n)).filter((n) => n > 0)
+        : [];
+      Progress.rewardedLevel = Progress.derive(Progress.totalXp).level;
+
+      const rec = data.records || {};
+      this.records = {
+        bestWpm: Math.max(0, Number(rec.bestWpm) || 0),
+        maxStreak: Math.max(0, Math.floor(Number(rec.maxStreak) || 0)),
+        longestEndless: Math.max(0, Number(rec.longestEndless) || 0),
+      };
+
+      if (data.scores && typeof data.scores === "object") {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.scores));
+      }
+
+      this.ready = true;
+      if (persistAfter !== false) {
+        Cosmetics.save();
+        Progress.save();
+      }
+      Cosmetics.paint();
+      Progress.paintHud();
+      if (typeof Game !== "undefined" && Game.renderLocker) {
+        Game.renderLocker();
+        Game.renderScores();
+      }
+      return Progress.snapshot().level;
+    },
+
+    migrateLegacy() {
+      const credits = Number(localStorage.getItem(CREDITS_KEY));
+      let owned;
+      let equipped;
+      try {
+        const raw = JSON.parse(localStorage.getItem(COSMETICS_KEY) || "null");
+        if (raw && typeof raw === "object") {
+          owned = raw.owned;
+          equipped = raw.equipped;
+        }
+      } catch { /* ignore */ }
+      let progress = {};
+      try {
+        progress = JSON.parse(localStorage.getItem(PROGRESS_KEY) || "{}") || {};
+      } catch { progress = {}; }
+      const scores = loadScores();
+      let bestWpm = 0;
+      let longestEndless = 0;
+      Object.values(scores).forEach((rows) => {
+        (rows || []).forEach((s) => {
+          bestWpm = Math.max(bestWpm, Number(s.wpm) || 0);
+          if (s.endless) longestEndless = Math.max(longestEndless, Number(s.distance) || 0);
+        });
+      });
+      const derivedLevel = Progress.derive(progress.totalXp || 0).level;
+      return {
+        version: 1,
+        level: progress.level || derivedLevel || 1,
+        totalXp: progress.totalXp || 0,
+        credits: Number.isFinite(credits) && credits >= 0 ? Math.floor(credits) : 0,
+        unlockedSkins: owned || { runner: ["cyan"], monster: ["ink"], sector: ["industrial"] },
+        equipped: equipped || { runner: "cyan", monster: "ink", sector: "industrial" },
+        title: progress.title,
+        titles: progress.titles,
+        freePulls: progress.freePulls,
+        rewardedLevel: progress.rewardedLevel,
+        milestones: progress.milestones,
+        records: { bestWpm, maxStreak: 0, longestEndless },
+        scores,
+      };
+    },
+
+    boot() {
+      let data = null;
+      try {
+        data = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
+      } catch { data = null; }
+      if (!this.validate(data)) data = this.migrateLegacy();
+      this.apply(data, false);
+      this.ready = true;
+      Cosmetics.save();
+      Progress.save();
+    },
+
+    noteRun(entry, maxStreak) {
+      const wpm = Math.max(0, Number(entry.wpm) || 0);
+      const streak = Math.max(0, Math.floor(maxStreak || 0));
+      const dist = Math.max(0, Number(entry.distance) || 0);
+      if (wpm > this.records.bestWpm) this.records.bestWpm = wpm;
+      if (streak > this.records.maxStreak) this.records.maxStreak = streak;
+      if (entry.endless && dist > this.records.longestEndless) this.records.longestEndless = dist;
+      this.persist();
+    },
+
+    toast(message, kind) {
+      const el = document.getElementById("app-toast");
+      if (!el) return;
+      el.hidden = false;
+      el.className = `app-toast ${kind || ""}`;
+      el.textContent = message;
+      clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(() => { el.hidden = true; }, 2400);
+    },
+
+    download() {
+      const data = this.snapshot();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "escape_the_breach_save.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 500);
+      this.toast("Backup file downloaded.");
+    },
+
+    copyCode() {
+      const code = this.encode();
+      const out = document.getElementById("save-code-out");
+      if (out) out.value = code;
+      const done = () => this.toast("Save code copied to clipboard!");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(done).catch(() => {
+          if (out) {
+            out.focus();
+            out.select();
+            document.execCommand("copy");
+          }
+          done();
+        });
+        return;
+      }
+      if (out) {
+        out.focus();
+        out.select();
+        document.execCommand("copy");
+      }
+      done();
+    },
+
+    importObject(data) {
+      if (!this.validate(data)) {
+        this.toast("Invalid save data", "error");
+        return false;
+      }
+      const level = this.apply(data, true);
+      this.refreshExport();
+      this.toast(`Data restored! Level ${level} loaded.`);
+      return true;
+    },
+
+    importCode(text) {
+      try {
+        return this.importObject(this.decode(text));
+      } catch {
+        this.toast("Invalid save data", "error");
+        return false;
+      }
+    },
+
+    importFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(String(reader.result || ""));
+          this.importObject(data);
+        } catch {
+          this.toast("Invalid save data", "error");
+        }
+      };
+      reader.onerror = () => this.toast("Invalid save data", "error");
+      reader.readAsText(file);
+    },
+
+    reset() {
+      const input = document.getElementById("reset-confirm");
+      if (!input || input.value.trim() !== "RESET") {
+        this.toast("Type RESET to confirm.", "error");
+        return;
+      }
+      input.value = "";
+      this.records = { bestWpm: 0, maxStreak: 0, longestEndless: 0 };
+      Cosmetics.credits = 0;
+      Cosmetics.display = 0;
+      Cosmetics.owned = { runner: ["cyan"], monster: ["ink"], sector: ["industrial"] };
+      Cosmetics.equipped = { runner: "cyan", monster: "ink", sector: "industrial" };
+      Progress.totalXp = 0;
+      Progress.title = DEFAULT_TITLE;
+      Progress.titles = [DEFAULT_TITLE];
+      Progress.freePulls = 0;
+      Progress.milestones = [];
+      Progress.rewardedLevel = 1;
+      localStorage.removeItem(STORAGE_KEY);
+      Cosmetics.save();
+      Progress.save();
+      Cosmetics.paint();
+      Progress.paintHud();
+      if (typeof Game !== "undefined") {
+        Game.renderLocker();
+        Game.renderScores();
+      }
+      this.refreshExport();
+      this.toast("All progress erased.");
+    },
+
+    refreshExport() {
+      const out = document.getElementById("save-code-out");
+      if (out) out.value = this.encode();
     },
   };
 
@@ -2452,6 +2768,19 @@
     levelupAck: $("btn-levelup-ack"),
     vaultBtn: $("btn-vault"),
     resultVault: $("btn-result-vault"),
+    dataVaultBtn: $("btn-data-vault"),
+    dataVaultFoot: $("btn-data-vault-foot"),
+    dataVaultHud: $("btn-data-vault-hud"),
+    resultData: $("btn-result-data"),
+    dataVault: $("data-vault-modal"),
+    dataVaultClose: $("btn-data-close"),
+    saveDownload: $("btn-save-download"),
+    saveCopy: $("btn-save-copy"),
+    saveUpload: $("btn-save-upload"),
+    saveFile: $("save-file-input"),
+    saveApply: $("btn-save-apply"),
+    saveReset: $("btn-save-reset"),
+    saveCodeIn: $("save-code-in"),
     market: $("market-modal"),
     marketClose: $("btn-market-close"),
     tabVault: $("tab-vault"),
@@ -2508,6 +2837,7 @@
       this.applySettingsToForm();
       Cosmetics.load();
       Progress.load();
+      SaveStore.boot();
       Cosmetics.paint();
       this.renderScores();
       this.syncMuteButtons();
@@ -2555,6 +2885,24 @@
       els.vaultBtn.addEventListener("click", () => this.openMarket("vault"));
       els.resultVault.addEventListener("click", () => this.openMarket("vault"));
       els.marketClose.addEventListener("click", () => this.closeMarket());
+      const openVault = () => this.openDataVault();
+      if (els.dataVaultBtn) els.dataVaultBtn.addEventListener("click", openVault);
+      if (els.dataVaultFoot) els.dataVaultFoot.addEventListener("click", openVault);
+      if (els.dataVaultHud) els.dataVaultHud.addEventListener("click", openVault);
+      if (els.resultData) els.resultData.addEventListener("click", openVault);
+      if (els.dataVaultClose) els.dataVaultClose.addEventListener("click", () => this.closeDataVault());
+      if (els.saveDownload) els.saveDownload.addEventListener("click", () => SaveStore.download());
+      if (els.saveCopy) els.saveCopy.addEventListener("click", () => SaveStore.copyCode());
+      if (els.saveUpload) els.saveUpload.addEventListener("click", () => els.saveFile && els.saveFile.click());
+      if (els.saveFile) els.saveFile.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = "";
+        SaveStore.importFile(file);
+      });
+      if (els.saveApply) els.saveApply.addEventListener("click", () => {
+        SaveStore.importCode(els.saveCodeIn ? els.saveCodeIn.value : "");
+      });
+      if (els.saveReset) els.saveReset.addEventListener("click", () => SaveStore.reset());
       els.tabVault.addEventListener("click", () => this.showMarketTab("vault"));
       els.tabLocker.addEventListener("click", () => this.showMarketTab("locker"));
       els.vaultView.addEventListener("click", (e) => {
@@ -2619,7 +2967,7 @@
 
       window.addEventListener("keydown", (e) => {
         if (this.state !== "start") return;
-        if (!els.market.hidden || !els.gachaOverlay.hidden) return;
+        if (!els.market.hidden || !els.gachaOverlay.hidden || (els.dataVault && !els.dataVault.hidden)) return;
         const map = { 1: "recruit", 2: "scout", 3: "operative", 4: "nightmare", 5: "apex" };
         if (map[e.key]) this.start(this.configFromPreset(map[e.key]));
       });
@@ -2745,6 +3093,14 @@
     },
 
     onFlowKey(e) {
+      if (els.dataVault && !els.dataVault.hidden) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          this.closeDataVault();
+        }
+        return;
+      }
       if (els.levelup && !els.levelup.hidden) {
         if (e.key === "Escape" || e.key === "Enter") {
           e.preventDefault();
@@ -2825,6 +3181,7 @@
     },
 
     openMarket(tab) {
+      if (els.dataVault) els.dataVault.hidden = true;
       els.result.hidden = true;
       els.start.hidden = true;
       els.game.hidden = true;
@@ -2844,6 +3201,32 @@
         this.state = "start";
       }
       Cosmetics.paint();
+    },
+
+    openDataVault() {
+      if (this.state === "playing") {
+        SaveStore.toast("Finish the run to open Data Vault.");
+        return;
+      }
+      els.gachaOverlay.hidden = true;
+      els.market.hidden = true;
+      els.start.hidden = true;
+      els.game.hidden = true;
+      els.result.hidden = true;
+      if (els.dataVault) els.dataVault.hidden = false;
+      SaveStore.refreshExport();
+    },
+
+    closeDataVault() {
+      if (els.dataVault) els.dataVault.hidden = true;
+      if (this.state === "victory" || this.state === "defeat") {
+        els.result.hidden = false;
+      } else {
+        els.start.hidden = false;
+        this.state = "start";
+      }
+      Cosmetics.paint();
+      Progress.paintHud();
     },
 
     showMarketTab(tab) {
@@ -3538,6 +3921,7 @@
       Cosmetics.addCredits(reward.total);
       const xp = Progress.xpFor(entry.distance, entry.accuracy, this.typing.maxStreak, this.typing.wpm(), this.typing.totalKeys);
       const progress = Progress.addXp(xp.total);
+      SaveStore.noteRun(entry, this.typing.maxStreak);
       this.paintRewardBreakdown(reward);
       this.paintXpBreakdown(xp, progress.before, progress.after);
       clearTimeout(this.levelupTimer);
@@ -3559,7 +3943,6 @@
   window.__ETB = Game;
   Game.cosmetics = Cosmetics;
   Game.progress = Progress;
-  Cosmetics.load();
-  Progress.load();
+  Game.saveStore = SaveStore;
   Game.boot();
 })();

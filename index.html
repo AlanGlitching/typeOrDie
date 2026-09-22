@@ -25,6 +25,9 @@
           <button id="btn-endless" class="toggle-btn" type="button" aria-pressed="false">Endless Mode</button>
           <button id="btn-lab" class="toggle-btn" type="button" aria-pressed="false" aria-expanded="false">Customize</button>
           <button id="btn-vault" class="toggle-btn vault-btn" type="button">Black Market Vault</button>
+          <button id="btn-data-vault" class="toggle-btn vault-data-btn" type="button" aria-label="Open Data Vault">
+            <span class="gear-ico" aria-hidden="true">⚙</span> Data Vault
+          </button>
           <div class="econ-row">
             <button class="rank-chip" id="start-rank" type="button" aria-label="Account rank">
               <span class="rank-lv" id="start-level">LV. 1</span>
@@ -122,8 +125,11 @@
         </div>
 
         <div class="start-footer">
-          <button id="btn-mute-start" class="ghost-btn" type="button">Audio: On</button>
-          <p class="hint">Presets start immediately. Endless + Customize persist between runs.</p>
+          <div class="footer-actions">
+            <button id="btn-mute-start" class="ghost-btn" type="button">Audio: On</button>
+            <button id="btn-data-vault-foot" class="ghost-btn compact gear-btn" type="button" aria-label="Open Data Vault">⚙</button>
+          </div>
+          <p class="hint">Presets start immediately. Endless + Customize persist between runs. Auto-save is always on.</p>
         </div>
 
         <div class="scores-block">
@@ -157,6 +163,7 @@
           <span class="xp-tip" id="hud-xp-tip">LV. 1 — 0 / 400 XP</span>
         </button>
         <button id="btn-mute-game" class="ghost-btn compact" type="button">Audio: On</button>
+        <button id="btn-data-vault-hud" class="ghost-btn compact gear-btn" type="button" aria-label="Open Data Vault">⚙</button>
       </header>
 
       <div id="minimap" aria-label="Race progress">
@@ -251,6 +258,7 @@
         <div class="result-actions">
           <button id="btn-again" class="primary-btn" type="button">Re-enter Corridor</button>
           <button id="btn-result-vault" class="ghost-btn" type="button">Open Black Market</button>
+          <button id="btn-result-data" class="ghost-btn" type="button">Data Vault</button>
         </div>
       </div>
     </section>
@@ -348,6 +356,43 @@
         </div>
       </div>
     </section>
+
+    <section id="data-vault-modal" class="overlay" hidden aria-label="Data Vault">
+      <div class="panel data-vault-panel">
+        <header class="market-head">
+          <div>
+            <p class="eyebrow">TERMINAL // ARCHIVE</p>
+            <h2>Data Vault</h2>
+          </div>
+          <button id="btn-data-close" class="ghost-btn compact" type="button">Close</button>
+        </header>
+        <p class="lore market-copy">Hands-free local save is always on. Export a file or code to move this operator between machines.</p>
+        <div class="vault-grid">
+          <section class="vault-col">
+            <h3>Export Progress</h3>
+            <button id="btn-save-download" class="primary-btn" type="button">Download Backup File</button>
+            <button id="btn-save-copy" class="ghost-btn" type="button">Copy Save Code</button>
+            <textarea id="save-code-out" class="save-code" readonly rows="5" aria-label="Encoded save code"></textarea>
+          </section>
+          <section class="vault-col">
+            <h3>Import &amp; Restore</h3>
+            <input id="save-file-input" type="file" accept="application/json,.json" hidden>
+            <button id="btn-save-upload" class="primary-btn" type="button">Upload Save File</button>
+            <textarea id="save-code-in" class="save-code" rows="5" placeholder="Paste ETB-v1-… code here" aria-label="Paste save code"></textarea>
+            <button id="btn-save-apply" class="ghost-btn" type="button">Apply Code</button>
+          </section>
+        </div>
+        <div class="vault-danger">
+          <label class="reset-label" for="reset-confirm">Type RESET to confirm erasing all progress</label>
+          <div class="reset-row">
+            <input id="reset-confirm" type="text" autocomplete="off" spellcheck="false" placeholder="RESET">
+            <button id="btn-save-reset" class="danger-btn" type="button">Reset Data</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="app-toast" class="app-toast" hidden role="status"></div>
 
     <div id="gacha-overlay" hidden>
       <div class="gacha-stage">
