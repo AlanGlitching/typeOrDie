@@ -24,6 +24,12 @@
         <div class="mode-bar">
           <button id="btn-endless" class="toggle-btn" type="button" aria-pressed="false">Endless Mode</button>
           <button id="btn-lab" class="toggle-btn" type="button" aria-pressed="false" aria-expanded="false">Customize</button>
+          <button id="btn-vault" class="toggle-btn vault-btn" type="button">Black Market Vault</button>
+          <div class="credits-chip" title="Data Shards">
+            <span class="credits-ico">◆</span>
+            <span id="start-credits">0</span>
+            <span class="credits-unit">CR</span>
+          </div>
         </div>
 
         <div class="difficulty-grid five" id="difficulty-grid">
@@ -128,6 +134,7 @@
           <div class="stat"><span class="stat-label">STREAK</span><span id="stat-streak">0</span></div>
           <div class="stat"><span class="stat-label">DIST</span><span id="stat-dist">0m</span></div>
           <div class="stat"><span class="stat-label">DOOR</span><span id="stat-door">100%</span></div>
+          <div class="stat"><span class="stat-label">CREDITS</span><span id="stat-credits">0</span></div>
         </div>
         <button id="btn-mute-game" class="ghost-btn compact" type="button">Audio: On</button>
       </header>
@@ -191,12 +198,119 @@
           <span class="spark-label">PACE // WPM TIMELINE</span>
           <canvas id="wpm-spark" width="560" height="88" aria-label="WPM over time"></canvas>
         </div>
+        <p id="res-credits" class="credits-award"></p>
         <p id="res-settings" class="settings-line"></p>
         <p id="result-record" class="record-line"></p>
         <p class="hint restart-hint">Tab then Enter, or Esc, retries the same protocol.</p>
-        <button id="btn-again" class="primary-btn" type="button">Re-enter Corridor</button>
+        <div class="result-actions">
+          <button id="btn-again" class="primary-btn" type="button">Re-enter Corridor</button>
+          <button id="btn-result-vault" class="ghost-btn" type="button">Open Black Market</button>
+        </div>
       </div>
     </section>
+
+    <section id="market-modal" class="overlay" hidden aria-label="Black Market Vault">
+      <div class="panel market-panel">
+        <header class="market-head">
+          <div>
+            <p class="eyebrow">TERMINAL // CONTRABAND</p>
+            <h2>Black Market Vault</h2>
+          </div>
+          <div class="credits-chip large">
+            <span class="credits-ico">◆</span>
+            <span id="market-credits">0</span>
+            <span class="credits-unit">CR</span>
+          </div>
+          <button id="btn-market-close" class="ghost-btn compact" type="button">Close</button>
+        </header>
+        <div class="market-tabs" role="tablist">
+          <button id="tab-vault" class="market-tab" type="button" aria-selected="true">Terminal Vault</button>
+          <button id="tab-locker" class="market-tab" type="button" aria-selected="false">Locker / Armory</button>
+        </div>
+        <div id="vault-view">
+          <p class="lore market-copy">250 Credits per decrypt. 2,250 for a 10x burst. Duplicates convert to 100 shards.</p>
+          <div class="banner-grid">
+            <article class="banner-card" data-banner="runner">
+              <span class="banner-tag">01 // CHARACTER</span>
+              <h3>Runner Visor &amp; Skins</h3>
+              <p>Helmet paints and visor protocols for the operator.</p>
+              <ul class="drop-table">
+                <li>60% Common · Cyan / Hazard / Steel</li>
+                <li>30% Rare · Emerald / Violet</li>
+                <li>10% Legendary · Neon Glitch / Gold</li>
+              </ul>
+              <div class="banner-actions">
+                <button class="primary-btn" type="button" data-pull="1">Pull 250</button>
+                <button class="ghost-btn" type="button" data-pull="10">10x 2,250</button>
+              </div>
+            </article>
+            <article class="banner-card" data-banner="monster">
+              <span class="banner-tag">02 // ABYSS</span>
+              <h3>Abyssal Mutations</h3>
+              <p>Reskin Experiment-09. Make the hunt look worse.</p>
+              <ul class="drop-table">
+                <li>60% Common · Ink / Crimson</li>
+                <li>30% Rare · Toxic / Frozen</li>
+                <li>10% Legendary · Void Singularity</li>
+              </ul>
+              <div class="banner-actions">
+                <button class="primary-btn" type="button" data-pull="1">Pull 250</button>
+                <button class="ghost-btn" type="button" data-pull="10">10x 2,250</button>
+              </div>
+            </article>
+            <article class="banner-card" data-banner="sector">
+              <span class="banner-tag">03 // SECTORS</span>
+              <h3>Corridor Themes</h3>
+              <p>Rewrite the walls you sprint through.</p>
+              <ul class="drop-table">
+                <li>60% Common · Industrial / Subway</li>
+                <li>30% Rare · Bio-Dome / Neon Underpass</li>
+                <li>10% Legendary · Quantum Warp</li>
+              </ul>
+              <div class="banner-actions">
+                <button class="primary-btn" type="button" data-pull="1">Pull 250</button>
+                <button class="ghost-btn" type="button" data-pull="10">10x 2,250</button>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div id="locker-view" hidden>
+          <p class="lore market-copy">Equip one runner, one mutation, and one sector. Selections persist.</p>
+          <div class="locker-wrap">
+            <section>
+              <h3>Runner</h3>
+              <div id="locker-runner" class="locker-grid"></div>
+            </section>
+            <section>
+              <h3>Monster</h3>
+              <div id="locker-monster" class="locker-grid"></div>
+            </section>
+            <section>
+              <h3>Sector</h3>
+              <div id="locker-sector" class="locker-grid"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="gacha-overlay" hidden>
+      <div class="gacha-stage">
+        <p id="gacha-reel" class="gacha-reel">DECRYPTING PROTOCOL…</p>
+        <article id="gacha-card" class="gacha-card" hidden>
+          <span id="gacha-rarity" class="gacha-rarity">RARE</span>
+          <div id="gacha-swatch" class="gacha-swatch"></div>
+          <h3 id="gacha-name">Item</h3>
+          <p id="gacha-slot" class="gacha-slot">Runner</p>
+          <p id="gacha-dup" class="dup-msg" hidden>Duplicate Converted to 100 Shards</p>
+          <div class="gacha-actions">
+            <button id="btn-equip-now" class="primary-btn" type="button">Equip Now</button>
+            <button id="btn-gacha-done" class="ghost-btn" type="button">Continue</button>
+          </div>
+        </article>
+        <div id="gacha-multi" class="gacha-multi" hidden></div>
+      </div>
+    </div>
   </div>
   <script src="game.js"></script>
 </body>

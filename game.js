@@ -295,6 +295,185 @@
     return { scores, rank };
   }
 
+  const CREDITS_KEY = "typing_credits";
+  const COSMETICS_KEY = "etb-cosmetics";
+  const PULL_COST = 250;
+  const TEN_COST = 2250;
+  const DUP_REFUND = 100;
+
+  const CATALOG = {
+    runner: [
+      { id: "cyan", name: "Default Cyan", rarity: "common", visor: "#7dffb0", visorHi: "#b8fff0", body: "#1b2733", trim: "#2c3b4c", limbs: "#c5d0dc", swatch: "linear-gradient(90deg,#1b2733,#7dffb0)" },
+      { id: "hazard", name: "Hazard Orange", rarity: "common", visor: "#ff9a32", visorHi: "#ffd19a", body: "#2a1c12", trim: "#4a2e18", limbs: "#e8b070", swatch: "linear-gradient(90deg,#2a1c12,#ff9a32)" },
+      { id: "steel", name: "Steel Gray", rarity: "common", visor: "#c5d0dc", visorHi: "#eef3f8", body: "#3a424c", trim: "#5a6570", limbs: "#9aa8b8", swatch: "linear-gradient(90deg,#3a424c,#c5d0dc)" },
+      { id: "emerald", name: "Emerald Phantom", rarity: "rare", visor: "#39ff88", visorHi: "#c8ffe0", body: "#082418", trim: "#145c3a", limbs: "#7dffb0", swatch: "linear-gradient(90deg,#082418,#39ff88)" },
+      { id: "violet", name: "Cyberpunk Violet", rarity: "rare", visor: "#d07aff", visorHi: "#f0d0ff", body: "#241434", trim: "#4a2870", limbs: "#c9a0ff", swatch: "linear-gradient(90deg,#241434,#d07aff)" },
+      { id: "glitch", name: "Neon Glitch", rarity: "legendary", fx: "rgb-wave", visor: "#ff4bd8", visorHi: "#7dfff6", body: "#120818", trim: "#3a2048", limbs: "#e8e8ff", swatch: "linear-gradient(90deg,#ff4bd8,#3dffd0,#ffd24a)" },
+      { id: "gold", name: "Gold Protocol", rarity: "legendary", visor: "#ffd24a", visorHi: "#fff4c2", body: "#2a210c", trim: "#6a5418", limbs: "#ffe08a", swatch: "linear-gradient(90deg,#2a210c,#ffd24a)" },
+    ],
+    monster: [
+      { id: "ink", name: "Shadow Ink", rarity: "common", body: "#14080c", mid: "#2a1016", horn: "#3a161c", tent: [18, 0, 10], eye: [255, 24, 36], glow: "#ff2030", swatch: "linear-gradient(90deg,#14080c,#ff2030)" },
+      { id: "crimson", name: "Crimson Carnage", rarity: "common", body: "#3a0808", mid: "#5a1010", horn: "#7a1818", tent: [90, 0, 8], eye: [255, 80, 40], glow: "#ff4020", swatch: "linear-gradient(90deg,#3a0808,#ff4020)" },
+      { id: "toxic", name: "Toxic Bioluminescent Green", rarity: "rare", body: "#0a2a12", mid: "#145c28", horn: "#1a7a38", tent: [20, 90, 30], eye: [80, 255, 90], glow: "#39ff88", swatch: "linear-gradient(90deg,#0a2a12,#39ff88)" },
+      { id: "frost", name: "Frozen Frost", rarity: "rare", body: "#0a1a2a", mid: "#163450", horn: "#8ec8e8", tent: [40, 90, 140], eye: [180, 240, 255], glow: "#7dd3fc", swatch: "linear-gradient(90deg,#0a1a2a,#7dd3fc)" },
+      { id: "void", name: "Void Singularity", rarity: "legendary", fx: "event-horizon", body: "#050308", mid: "#1a0a28", horn: "#4a2080", tent: [40, 10, 70], eye: [240, 220, 255], glow: "#c084fc", swatch: "linear-gradient(90deg,#050308,#c084fc)" },
+    ],
+    sector: [
+      { id: "industrial", name: "Sublevel Industrial", rarity: "common", sky0: "#121821", sky1: "#243044", wallA: "#3a4658", wallB: "#303a4a", innerA: "#2a3342", innerB: "#242c38", rivet: "#8b97a8", stripe: "#c9a227", ceil: "#1c232d", beam: "#4a5668", pipe: "#6d7c90", pipeHi: "#9aabbf", light: [255, 48, 58], beamLight: [255, 210, 80], floor0: "#3a332c", floor1: "#241f1c", floor2: "#100e10", lane: "rgba(255,196,70,0.35)", laneFill: "rgba(255,196,70,0.12)", swatch: "linear-gradient(90deg,#303a4a,#c9a227)" },
+      { id: "subway", name: "Abandoned Subway", rarity: "common", sky0: "#121214", sky1: "#2a2a32", wallA: "#3a3a42", wallB: "#2c2c34", innerA: "#23232a", innerB: "#1c1c22", rivet: "#8a8a92", stripe: "#f0c400", ceil: "#18181c", beam: "#4a4a52", pipe: "#6a6a70", pipeHi: "#b0b0b8", light: [255, 196, 40], beamLight: [255, 220, 120], floor0: "#2e2e28", floor1: "#1c1c18", floor2: "#0c0c0c", lane: "rgba(240,196,0,0.45)", laneFill: "rgba(240,196,0,0.14)", swatch: "linear-gradient(90deg,#2c2c34,#f0c400)" },
+      { id: "biodome", name: "Overgrown Bio-Dome", rarity: "rare", vines: true, sky0: "#102018", sky1: "#1c3a28", wallA: "#2a4a32", wallB: "#203828", innerA: "#184028", innerB: "#14281c", rivet: "#7aa878", stripe: "#5dff8a", ceil: "#102018", beam: "#2a5a38", pipe: "#4a7860", pipeHi: "#8fd4a8", light: [80, 255, 120], beamLight: [180, 255, 160], floor0: "#2a3a24", floor1: "#182418", floor2: "#0a120c", lane: "rgba(93,255,138,0.35)", laneFill: "rgba(93,255,138,0.12)", swatch: "linear-gradient(90deg,#203828,#5dff8a)" },
+      { id: "underpass", name: "Neon City Underpass", rarity: "rare", sky0: "#14081c", sky1: "#2a1040", wallA: "#2a1838", wallB: "#1c1028", innerA: "#241430", innerB: "#180c22", rivet: "#c084fc", stripe: "#ff4bd8", ceil: "#100818", beam: "#3a2060", pipe: "#6a40a0", pipeHi: "#d07aff", light: [255, 60, 200], beamLight: [80, 255, 255], floor0: "#221428", floor1: "#140c1c", floor2: "#08040e", lane: "rgba(0,255,220,0.4)", laneFill: "rgba(255,75,216,0.14)", swatch: "linear-gradient(90deg,#1c1028,#ff4bd8,#3dffd0)" },
+      { id: "quantum", name: "Hyper-Speed Quantum Warp", rarity: "legendary", warp: true, sky0: "#080414", sky1: "#1a0830", wallA: "#241048", wallB: "#180830", innerA: "#2a1458", innerB: "#140828", rivet: "#c084fc", stripe: "#7d5cff", ceil: "#0c0618", beam: "#3a1880", pipe: "#5a30a8", pipeHi: "#d0b0ff", light: [160, 80, 255], beamLight: [200, 140, 255], floor0: "#1a0c30", floor1: "#100824", floor2: "#060310", lane: "rgba(160,80,255,0.5)", laneFill: "rgba(125,92,255,0.16)", swatch: "linear-gradient(90deg,#080414,#7d5cff,#3dffd0)" },
+    ],
+  };
+
+  const Cosmetics = {
+    credits: 0,
+    owned: { runner: ["cyan"], monster: ["ink"], sector: ["industrial"] },
+    equipped: { runner: "cyan", monster: "ink", sector: "industrial" },
+    display: 0,
+    anim: 0,
+
+    load() {
+      const n = Number(localStorage.getItem(CREDITS_KEY));
+      this.credits = Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+      this.display = this.credits;
+      try {
+        const raw = JSON.parse(localStorage.getItem(COSMETICS_KEY) || "null");
+        if (raw && typeof raw === "object") {
+          this.owned = {
+            runner: Array.isArray(raw.owned?.runner) ? raw.owned.runner : ["cyan"],
+            monster: Array.isArray(raw.owned?.monster) ? raw.owned.monster : ["ink"],
+            sector: Array.isArray(raw.owned?.sector) ? raw.owned.sector : ["industrial"],
+          };
+          this.equipped = {
+            runner: raw.equipped?.runner || "cyan",
+            monster: raw.equipped?.monster || "ink",
+            sector: raw.equipped?.sector || "industrial",
+          };
+        }
+      } catch { /* keep defaults */ }
+      ["runner", "monster", "sector"].forEach((slot) => {
+        const fallback = slot === "runner" ? "cyan" : slot === "monster" ? "ink" : "industrial";
+        if (!this.owned[slot].includes(fallback)) this.owned[slot].unshift(fallback);
+        if (!this.find(slot, this.equipped[slot])) this.equipped[slot] = fallback;
+        if (!this.owned[slot].includes(this.equipped[slot])) this.equipped[slot] = fallback;
+      });
+      this.save();
+    },
+
+    save() {
+      localStorage.setItem(CREDITS_KEY, String(this.credits));
+      localStorage.setItem(COSMETICS_KEY, JSON.stringify({
+        owned: this.owned,
+        equipped: this.equipped,
+      }));
+      localStorage.setItem("equippedRunnerSkin", this.equipped.runner);
+      localStorage.setItem("equippedMonsterSkin", this.equipped.monster);
+      localStorage.setItem("equippedBackground", this.equipped.sector);
+    },
+
+    find(slot, id) {
+      return (CATALOG[slot] || []).find((item) => item.id === id) || null;
+    },
+
+    list(slot) {
+      return CATALOG[slot] || [];
+    },
+
+    runner() {
+      return this.find("runner", this.equipped.runner) || CATALOG.runner[0];
+    },
+
+    monster() {
+      return this.find("monster", this.equipped.monster) || CATALOG.monster[0];
+    },
+
+    sector() {
+      return this.find("sector", this.equipped.sector) || CATALOG.sector[0];
+    },
+
+    owns(slot, id) {
+      return this.owned[slot].includes(id);
+    },
+
+    addCredits(amount) {
+      const from = this.credits;
+      this.credits = Math.max(0, this.credits + Math.floor(amount));
+      this.save();
+      this.animate(from, this.credits);
+      return this.credits;
+    },
+
+    spend(amount) {
+      if (this.credits < amount) return false;
+      const from = this.credits;
+      this.credits -= amount;
+      this.save();
+      this.animate(from, this.credits);
+      return true;
+    },
+
+    animate(from, to) {
+      cancelAnimationFrame(this.anim);
+      const start = performance.now();
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / 620);
+        const eased = 1 - Math.pow(1 - t, 3);
+        this.display = Math.round(from + (to - from) * eased);
+        this.paint();
+        if (t < 1) this.anim = requestAnimationFrame(tick);
+      };
+      this.anim = requestAnimationFrame(tick);
+    },
+
+    paint() {
+      const text = String(this.display);
+      ["start-credits", "market-credits", "stat-credits"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      });
+    },
+
+    rewardFor(distance, accuracy, netWpm, escaped) {
+      const acc = clamp(accuracy, 0, 100);
+      const base = Math.floor((Math.max(0, distance) / 10) * (acc / 100));
+      const win = escaped ? 150 : 0;
+      const wpm = Math.max(0, Math.floor(netWpm || 0));
+      const clean = acc >= 98 ? 75 : 0;
+      return {
+        base,
+        win,
+        wpm,
+        clean,
+        total: base + win + wpm + clean,
+      };
+    },
+
+    roll(slot) {
+      const pool = this.list(slot);
+      const r = Math.random();
+      const rarity = r < 0.6 ? "common" : r < 0.9 ? "rare" : "legendary";
+      const band = pool.filter((item) => item.rarity === rarity);
+      const pick = (band.length ? band : pool)[Math.floor(Math.random() * (band.length || pool.length))];
+      const dup = this.owns(slot, pick.id);
+      if (!dup) {
+        this.owned[slot].push(pick.id);
+        this.save();
+      } else {
+        this.addCredits(DUP_REFUND);
+      }
+      return { item: pick, slot, dup };
+    },
+
+    equip(slot, id) {
+      if (!this.owns(slot, id) || !this.find(slot, id)) return false;
+      this.equipped[slot] = id;
+      this.save();
+      return true;
+    },
+  };
+
   /* ------------------------------------------------------------------ */
   /* Audio                                                               */
   /* ------------------------------------------------------------------ */
@@ -679,6 +858,20 @@
       notes.forEach((f, i) => {
         setTimeout(() => this.beep(f, 0.28, "triangle", 0.14), i * 140);
       });
+    },
+
+    gachaTick(i) {
+      this.beep(1400 + (i % 7) * 90, 0.03, "square", 0.05);
+    },
+
+    gachaReveal(legendary) {
+      this.beep(70, 0.32, "sine", 0.26, 38);
+      this.beep(legendary ? 880 : 520, 0.22, "triangle", 0.16);
+      if (legendary) {
+        [1046, 1318, 1568].forEach((f, i) => {
+          setTimeout(() => this.beep(f, 0.22, "square", 0.1), 80 + i * 90);
+        });
+      }
     },
   };
 
@@ -1450,9 +1643,11 @@
       ctx.translate(sx, sy);
 
       const horizon = h * 0.54;
+      const theme = Cosmetics.sector();
+      this.theme = theme;
       const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-      sky.addColorStop(0, "#121821");
-      sky.addColorStop(1, "#243044");
+      sky.addColorStop(0, theme.sky0);
+      sky.addColorStop(1, theme.sky1);
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, w, horizon);
 
@@ -1460,6 +1655,7 @@
       this.drawPipes(ctx, w, horizon, typing.boostLeft > 0);
       this.drawLights(ctx, w, horizon);
       this.drawFloor(ctx, w, h, horizon);
+      if (theme.warp) this.drawWarp(ctx, w, h, horizon);
 
       const playerX = w * this.playerBias;
       const playerY = horizon + 6;
@@ -1497,54 +1693,81 @@
       }
     },
 
+    drawWarp(ctx, w, h, horizon) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(160, 80, 255, 0.22)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 14; i++) {
+        const y = (i / 14) * h;
+        const x = (this.scroll * 14 + i * 61) % (w + 120) - 40;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 70 - (i % 4) * 20, y + 3);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
+
     drawWalls(ctx, w, horizon) {
+      const th = this.theme || Cosmetics.sector();
       const panelW = 110;
       const offset = this.scroll * 0.4 % panelW;
       for (let x = -panelW; x < w + panelW; x += panelW) {
         const px = Math.round(x - offset);
         const alt = Math.floor((x + this.scroll * 0.4) / panelW) % 2 === 0;
-        ctx.fillStyle = alt ? "#3a4658" : "#303a4a";
+        ctx.fillStyle = alt ? th.wallA : th.wallB;
         ctx.fillRect(px, 0, panelW - 5, horizon);
-        ctx.fillStyle = alt ? "#2a3342" : "#242c38";
+        ctx.fillStyle = alt ? th.innerA : th.innerB;
         ctx.fillRect(px + 8, 14, panelW - 22, horizon - 32);
         ctx.strokeStyle = "rgba(180, 200, 220, 0.18)";
         ctx.strokeRect(px + 8.5, 14.5, panelW - 23, horizon - 33);
-        ctx.fillStyle = "#8b97a8";
+        ctx.fillStyle = th.rivet;
         [[px + 14, 20], [px + panelW - 24, 20], [px + 14, horizon - 22], [px + panelW - 24, horizon - 22]]
           .forEach(([rx, ry]) => {
             ctx.beginPath();
             ctx.arc(rx, ry, 2.2, 0, Math.PI * 2);
             ctx.fill();
           });
-        ctx.fillStyle = "#c9a227";
+        ctx.fillStyle = th.stripe;
         ctx.fillRect(px + 18, horizon - 28, panelW - 42, 5);
         ctx.fillStyle = "#1b1f24";
         ctx.fillRect(px + 18, horizon - 26, 10, 5);
         ctx.fillRect(px + 38, horizon - 26, 10, 5);
+        if (th.vines) {
+          ctx.strokeStyle = "rgba(93, 255, 138, 0.35)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(px + 20, 8);
+          ctx.quadraticCurveTo(px + 40, horizon * 0.4, px + 18, horizon - 10);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(60, 140, 70, 0.28)";
+          ctx.fillRect(px + 12, horizon - 48, panelW - 30, 14);
+        }
       }
 
-      ctx.fillStyle = "#1c232d";
+      ctx.fillStyle = th.ceil;
       ctx.fillRect(0, 0, w, 10);
       for (let i = 0; i < 12; i++) {
         const bx = ((i * 140) - this.scroll * 0.25) % (w + 140) - 20;
-        ctx.fillStyle = "#4a5668";
+        ctx.fillStyle = th.beam;
         ctx.fillRect(bx, 0, 16, horizon * 0.2);
       }
     },
 
     drawPipes(ctx, w, horizon, boost) {
+      const th = this.theme || Cosmetics.sector();
       const y1 = horizon * 0.24;
       const y2 = horizon * 0.38;
-      ctx.fillStyle = "#6d7c90";
+      ctx.fillStyle = th.pipe;
       ctx.fillRect(0, y1, w, 14);
       ctx.fillRect(0, y2, w, 11);
-      ctx.fillStyle = "#9aabbf";
+      ctx.fillStyle = th.pipeHi;
       ctx.fillRect(0, y1 + 3, w, 4);
-      ctx.fillStyle = "#4e5b6c";
+      ctx.fillStyle = th.innerB;
       ctx.fillRect(0, y1 + 12, w, 2);
       for (let i = 0; i < 6; i++) {
         const vx = ((i * 190) - this.scroll * 0.45) % (w + 190);
-        ctx.fillStyle = "#8b9aab";
+        ctx.fillStyle = th.pipeHi;
         ctx.fillRect(vx, y1 - 6, 16, 26);
         ctx.fillStyle = "#d7e1ec";
         ctx.beginPath();
@@ -1557,33 +1780,37 @@
     },
 
     drawLights(ctx, w, horizon) {
+      const th = this.theme || Cosmetics.sector();
       const spacing = 150;
       const offset = this.scroll * 0.6 % spacing;
       const flicker = 0.6 + Math.random() * 0.4;
       const pulse = 0.72 + Math.sin(performance.now() / 160) * 0.28;
+      const [lr, lg, lb] = th.light;
+      const [br, bg, bb] = th.beamLight;
       for (let x = -40; x < w + 40; x += spacing) {
         const px = x - offset;
         const glow = flicker * pulse;
-        ctx.fillStyle = `rgba(255, 48, 58, ${0.2 * glow})`;
+        ctx.fillStyle = `rgba(${lr}, ${lg}, ${lb}, ${0.2 * glow})`;
         ctx.beginPath();
         ctx.ellipse(px, 34, 52, 22, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = `rgba(255, 72, 72, ${0.9 * glow})`;
+        ctx.fillStyle = `rgba(${lr}, ${lg}, ${lb}, ${0.9 * glow})`;
         ctx.fillRect(px - 12, 10, 24, 9);
-        ctx.fillStyle = `rgba(255, 210, 80, ${0.12 * glow})`;
+        ctx.fillStyle = `rgba(${br}, ${bg}, ${bb}, ${0.12 * glow})`;
         ctx.fillRect(px - 18, 20, 36, horizon - 28);
       }
     },
 
     drawFloor(ctx, w, h, horizon) {
+      const th = this.theme || Cosmetics.sector();
       const floor = ctx.createLinearGradient(0, horizon, 0, h);
-      floor.addColorStop(0, "#3a332c");
-      floor.addColorStop(0.35, "#241f1c");
-      floor.addColorStop(1, "#100e10");
+      floor.addColorStop(0, th.floor0);
+      floor.addColorStop(0.35, th.floor1);
+      floor.addColorStop(1, th.floor2);
       ctx.fillStyle = floor;
       ctx.fillRect(0, horizon, w, h - horizon);
 
-      ctx.strokeStyle = "rgba(255, 196, 70, 0.35)";
+      ctx.strokeStyle = th.lane;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(0, horizon);
@@ -1593,27 +1820,29 @@
 
       const vpX = w * 0.7;
       for (let i = -10; i <= 12; i++) {
-        ctx.strokeStyle = i === 0 ? "rgba(255, 196, 70, 0.28)" : "rgba(210, 220, 235, 0.16)";
+        ctx.strokeStyle = i === 0 ? th.lane : "rgba(210, 220, 235, 0.16)";
         ctx.beginPath();
         ctx.moveTo(vpX + i * 16, horizon);
         ctx.lineTo(vpX + i * 86, h + 10);
         ctx.stroke();
       }
 
-      const tile = 42;
-      const off = this.scroll * 1.25 % tile;
-      for (let i = 0; i < 20; i++) {
+      const tile = th.warp ? 28 : 42;
+      const off = this.scroll * (th.warp ? 2.4 : 1.25) % tile;
+      for (let i = 0; i < 24; i++) {
         const yRel = (i * tile - off) / Math.max(1, h - horizon);
         if (yRel < 0) continue;
         const y = horizon + Math.pow(yRel, 1.28) * (h - horizon);
-        ctx.strokeStyle = `rgba(220, 230, 245, ${0.08 + yRel * 0.2})`;
+        ctx.strokeStyle = th.warp
+          ? `rgba(160, 80, 255, ${0.12 + yRel * 0.35})`
+          : `rgba(220, 230, 245, ${0.08 + yRel * 0.2})`;
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(w, y);
         ctx.stroke();
       }
 
-      ctx.fillStyle = "rgba(255, 196, 70, 0.12)";
+      ctx.fillStyle = th.laneFill;
       ctx.beginPath();
       ctx.moveTo(vpX - 10, horizon);
       ctx.lineTo(vpX - 70, h);
@@ -1626,6 +1855,7 @@
     drawPlayer(ctx, x, y, race, typing, unit) {
       const speed = race.speed;
       const boost = typing.boostLeft > 0;
+      const skin = Cosmetics.runner();
       const cadence = 0.4 + typing.burstCps(performance.now()) * 1.15 + clamp(speed / 12, 0, 2.4);
       const t = performance.now() / 1000;
       const swing = Math.sin(t * cadence * 10);
@@ -1666,12 +1896,12 @@
       if (boost) {
         const trail = ctx.createLinearGradient(-70, 20, 10, 20);
         trail.addColorStop(0, "rgba(61,255,208,0)");
-        trail.addColorStop(1, "rgba(61,255,208,0.28)");
+        trail.addColorStop(1, skin.visor + "48");
         ctx.fillStyle = trail;
         ctx.fillRect(-74, 8, 78, 44);
       }
 
-      ctx.strokeStyle = boost ? "#3dffd0" : "#c5d0dc";
+      ctx.strokeStyle = boost ? skin.visor : skin.limbs;
       ctx.lineWidth = 5;
       ctx.lineCap = "round";
       ctx.beginPath();
@@ -1690,15 +1920,20 @@
       ctx.lineTo(22 + swing * 10, 28);
       ctx.stroke();
 
-      ctx.fillStyle = "#1b2733";
+      ctx.fillStyle = skin.body;
       ctx.beginPath();
       ctx.roundRect(-11, 2, 26, 30, 5);
       ctx.fill();
-      ctx.fillStyle = "#2c3b4c";
+      ctx.fillStyle = skin.trim;
       ctx.fillRect(-9, 8, 22, 8);
 
-      ctx.fillStyle = boost ? "#3dffd0" : "#7dffb0";
-      ctx.shadowColor = ctx.fillStyle;
+      let visor = boost ? skin.visor : skin.visor;
+      if (skin.fx === "rgb-wave") {
+        const hue = (performance.now() / 8) % 360;
+        visor = `hsl(${hue}, 100%, 62%)`;
+      }
+      ctx.fillStyle = visor;
+      ctx.shadowColor = visor;
       ctx.shadowBlur = 16;
       ctx.beginPath();
       ctx.roundRect(-8, -16, 24, 18, 6);
@@ -1706,7 +1941,7 @@
       ctx.fillStyle = "#04151a";
       ctx.shadowBlur = 0;
       ctx.fillRect(2, -10, 13, 6);
-      ctx.fillStyle = boost ? "#b8fff0" : "#9effc8";
+      ctx.fillStyle = skin.visorHi;
       ctx.globalAlpha = 0.85;
       ctx.fillRect(3, -9, 11, 3);
       ctx.globalAlpha = 1;
@@ -1716,20 +1951,34 @@
 
     drawMonster(ctx, x, y, scale, prox) {
       const t = performance.now() / 1000;
+      const skin = Cosmetics.monster();
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(scale, scale);
+
+      if (skin.fx === "event-horizon") {
+        for (let i = 0; i < 10; i++) {
+          const a = t * 2.2 + i * 0.62;
+          const rr = 22 + (i % 4) * 10 + Math.sin(a) * 8;
+          ctx.strokeStyle = `rgba(192, 132, 252, ${0.18 + (i % 3) * 0.08})`;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.arc(2, 18, rr, a, a + 1.4);
+          ctx.stroke();
+        }
+      }
 
       ctx.fillStyle = `rgba(20, 0, 4, ${0.35 + prox * 0.3})`;
       ctx.beginPath();
       ctx.ellipse(0, 58, 86, 18, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      const [tr, tg, tb] = skin.tent;
       for (let i = 0; i < 9; i++) {
         const a = t * (1.4 + i * 0.17) + i * 0.7;
         const tx = -28 - i * 9 + Math.sin(a) * 22;
         const ty = 16 + Math.cos(a * 1.35) * 28;
-        ctx.strokeStyle = `rgba(${18 + i * 6}, 0, ${10 + i}, 0.92)`;
+        ctx.strokeStyle = `rgba(${tr + i * 6}, ${tg}, ${tb + i}, 0.92)`;
         ctx.lineWidth = 9 - i * 0.55;
         ctx.lineCap = "round";
         ctx.beginPath();
@@ -1738,19 +1987,19 @@
         ctx.stroke();
       }
 
-      ctx.fillStyle = "#14080c";
+      ctx.fillStyle = skin.body;
       ctx.beginPath();
       ctx.moveTo(-10, -18);
       ctx.bezierCurveTo(-52, 4, -40, 62, 8, 70);
       ctx.bezierCurveTo(40, 60, 36, 6, 14, -16);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = "#2a1016";
+      ctx.fillStyle = skin.mid;
       ctx.beginPath();
       ctx.ellipse(4, 18, 18, 16, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = "#3a161c";
+      ctx.fillStyle = skin.horn;
       ctx.beginPath();
       ctx.moveTo(-8, -16);
       ctx.lineTo(-24, -46);
@@ -1759,7 +2008,7 @@
       ctx.lineTo(30, -48);
       ctx.lineTo(18, -12);
       ctx.fill();
-      ctx.strokeStyle = "#6a3038";
+      ctx.strokeStyle = skin.glow;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(-16, -32);
@@ -1771,10 +2020,11 @@
       const eyes = [
         [4, 8, 5.2], [-10, 14, 3.6], [16, 16, 3], [-2, 22, 2.4], [10, 2, 2.8], [8, 18, 2],
       ];
+      const [er, eg, eb] = skin.eye;
       eyes.forEach(([ex, ey, r], i) => {
         const pulse = 0.7 + Math.sin(t * 7 + i) * 0.3;
-        ctx.fillStyle = `rgba(255, ${24 + i * 12}, 36, ${0.95 * pulse})`;
-        ctx.shadowColor = "#ff2030";
+        ctx.fillStyle = `rgba(${er}, ${Math.min(255, eg + i * 8)}, ${eb}, ${0.95 * pulse})`;
+        ctx.shadowColor = skin.glow;
         ctx.shadowBlur = 14;
         ctx.beginPath();
         ctx.arc(ex, ey, r, 0, Math.PI * 2);
@@ -1930,6 +2180,26 @@
     slideBanner: $("slide-banner"),
     resSettings: $("res-settings"),
     resRecord: $("result-record"),
+    resCredits: $("res-credits"),
+    vaultBtn: $("btn-vault"),
+    resultVault: $("btn-result-vault"),
+    market: $("market-modal"),
+    marketClose: $("btn-market-close"),
+    tabVault: $("tab-vault"),
+    tabLocker: $("tab-locker"),
+    vaultView: $("vault-view"),
+    lockerView: $("locker-view"),
+    gachaOverlay: $("gacha-overlay"),
+    gachaReel: $("gacha-reel"),
+    gachaCard: $("gacha-card"),
+    gachaRarity: $("gacha-rarity"),
+    gachaSwatch: $("gacha-swatch"),
+    gachaName: $("gacha-name"),
+    gachaSlot: $("gacha-slot"),
+    gachaDup: $("gacha-dup"),
+    gachaMulti: $("gacha-multi"),
+    equipNow: $("btn-equip-now"),
+    gachaDone: $("btn-gacha-done"),
     endlessBtn: $("btn-endless"),
     labBtn: $("btn-lab"),
     labPanel: $("lab-panel"),
@@ -1967,6 +2237,8 @@
       Renderer.init(els.canvas);
       WordsView.mount();
       this.applySettingsToForm();
+      Cosmetics.load();
+      Cosmetics.paint();
       this.renderScores();
       this.syncMuteButtons();
       this.syncViewport();
@@ -2010,6 +2282,28 @@
       els.muteStart.addEventListener("click", () => this.toggleMute());
       els.muteGame.addEventListener("click", () => this.toggleMute());
       els.again.addEventListener("click", () => this.toStart());
+      els.vaultBtn.addEventListener("click", () => this.openMarket("vault"));
+      els.resultVault.addEventListener("click", () => this.openMarket("vault"));
+      els.marketClose.addEventListener("click", () => this.closeMarket());
+      els.tabVault.addEventListener("click", () => this.showMarketTab("vault"));
+      els.tabLocker.addEventListener("click", () => this.showMarketTab("locker"));
+      els.vaultView.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-pull]");
+        if (!btn) return;
+        const card = btn.closest("[data-banner]");
+        if (!card) return;
+        this.pullBanner(card.dataset.banner, Number(btn.dataset.pull));
+      });
+      els.equipNow.addEventListener("click", () => this.equipGacha());
+      els.gachaDone.addEventListener("click", () => this.closeGacha());
+      ["runner", "monster", "sector"].forEach((slot) => {
+        document.getElementById(`locker-${slot}`).addEventListener("click", (e) => {
+          const item = e.target.closest("[data-id]");
+          if (!item || item.classList.contains("locked")) return;
+          Cosmetics.equip(slot, item.dataset.id);
+          this.renderLocker();
+        });
+      });
 
       els.input.addEventListener("keydown", (e) => this.onKey(e));
       els.input.addEventListener("beforeinput", (e) => this.onBeforeInput(e));
@@ -2047,6 +2341,7 @@
 
       window.addEventListener("keydown", (e) => {
         if (this.state !== "start") return;
+        if (!els.market.hidden || !els.gachaOverlay.hidden) return;
         const map = { 1: "recruit", 2: "scout", 3: "operative", 4: "nightmare", 5: "apex" };
         if (map[e.key]) this.start(this.configFromPreset(map[e.key]));
       });
@@ -2172,6 +2467,22 @@
     },
 
     onFlowKey(e) {
+      if (!els.gachaOverlay.hidden) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          this.closeGacha();
+        }
+        return;
+      }
+      if (!els.market.hidden) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          this.closeMarket();
+        }
+        return;
+      }
       const inRun = this.state === "playing";
       const inResult = this.state === "victory" || this.state === "defeat";
       if (!inRun && !inResult) return;
@@ -2225,6 +2536,160 @@
         return;
       }
       this.start(this.runCfg);
+    },
+
+    openMarket(tab) {
+      els.result.hidden = true;
+      els.start.hidden = true;
+      els.game.hidden = true;
+      els.market.hidden = false;
+      Cosmetics.paint();
+      this.showMarketTab(tab || "vault");
+      this.renderLocker();
+    },
+
+    closeMarket() {
+      els.gachaOverlay.hidden = true;
+      els.market.hidden = true;
+      if (this.state === "victory" || this.state === "defeat") {
+        els.result.hidden = false;
+      } else {
+        els.start.hidden = false;
+        this.state = "start";
+      }
+      Cosmetics.paint();
+    },
+
+    showMarketTab(tab) {
+      const vault = tab !== "locker";
+      els.tabVault.setAttribute("aria-selected", vault ? "true" : "false");
+      els.tabLocker.setAttribute("aria-selected", vault ? "false" : "true");
+      els.vaultView.hidden = !vault;
+      els.lockerView.hidden = vault;
+      if (!vault) this.renderLocker();
+    },
+
+    renderLocker() {
+      ["runner", "monster", "sector"].forEach((slot) => {
+        const host = document.getElementById(`locker-${slot}`);
+        if (!host) return;
+        host.replaceChildren();
+        Cosmetics.list(slot).forEach((item) => {
+          const owned = Cosmetics.owns(slot, item.id);
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `locker-item ${item.rarity}${owned ? "" : " locked"}${Cosmetics.equipped[slot] === item.id ? " equipped" : ""}`;
+          btn.dataset.id = item.id;
+          btn.innerHTML = `<div class="swatch" style="background:${item.swatch}"></div><span class="name">${item.name}</span><span class="rarity">${item.rarity.toUpperCase()}${owned ? "" : " // LOCKED"}</span>`;
+          host.appendChild(btn);
+        });
+      });
+    },
+
+    pullBanner(slot, count) {
+      if (this.pulling) return;
+      const cost = count === 10 ? TEN_COST : PULL_COST;
+      if (Cosmetics.credits < cost) {
+        els.gachaOverlay.hidden = false;
+        els.gachaReel.hidden = true;
+        els.gachaCard.hidden = false;
+        els.gachaMulti.hidden = true;
+        els.gachaCard.className = "gacha-card";
+        els.gachaRarity.textContent = "DENIED";
+        els.gachaName.textContent = "Insufficient Credits";
+        els.gachaSlot.textContent = `Need ${cost} CR`;
+        els.gachaDup.hidden = true;
+        els.equipNow.hidden = true;
+        return;
+      }
+      AudioSystem.resume();
+      Cosmetics.spend(cost);
+      this.pulling = true;
+      this.lastPulls = [];
+      const n = count === 10 ? 10 : 1;
+      for (let i = 0; i < n; i++) this.lastPulls.push(Cosmetics.roll(slot));
+      this.playGacha(slot);
+    },
+
+    playGacha(slot) {
+      els.gachaOverlay.hidden = false;
+      els.gachaReel.hidden = false;
+      els.gachaCard.hidden = true;
+      els.gachaMulti.hidden = true;
+      els.equipNow.hidden = false;
+      const names = Cosmetics.list(slot).map((item) => item.name);
+      const start = performance.now();
+      const spin = (now) => {
+        const t = now - start;
+        const idx = Math.floor(t / 70) % names.length;
+        els.gachaReel.textContent = names[idx] || "DECRYPTING…";
+        if (Math.floor(t / 70) !== Math.floor((t - 16) / 70)) AudioSystem.gachaTick(idx);
+        if (t < 1200) {
+          this.gachaTimer = requestAnimationFrame(spin);
+          return;
+        }
+        this.revealGacha();
+      };
+      this.gachaTimer = requestAnimationFrame(spin);
+    },
+
+    revealGacha() {
+      this.pulling = false;
+      const pulls = this.lastPulls || [];
+      const featured = [...pulls].sort((a, b) => {
+        const rank = { common: 0, rare: 1, legendary: 2 };
+        return (rank[b.item.rarity] - rank[a.item.rarity]) || (a.dup - b.dup);
+      })[0] || pulls[0];
+      this.pendingEquip = featured;
+      els.gachaReel.hidden = true;
+      AudioSystem.gachaReveal(featured?.item.rarity === "legendary");
+      if (pulls.length > 1) {
+        els.gachaCard.hidden = true;
+        els.gachaMulti.hidden = false;
+        els.gachaMulti.replaceChildren();
+        pulls.forEach((pull) => {
+          const mini = document.createElement("button");
+          mini.type = "button";
+          mini.className = `gacha-mini ${pull.item.rarity}`;
+          mini.innerHTML = `<div class="swatch" style="background:${pull.item.swatch}"></div>${pull.item.name}${pull.dup ? "<br>DUP +100" : ""}`;
+          mini.addEventListener("click", () => {
+            this.pendingEquip = pull;
+            this.showGachaCard(pull);
+          });
+          els.gachaMulti.appendChild(mini);
+        });
+        this.showGachaCard(featured);
+        return;
+      }
+      els.gachaMulti.hidden = true;
+      this.showGachaCard(featured);
+    },
+
+    showGachaCard(pull) {
+      if (!pull) return;
+      els.gachaCard.hidden = false;
+      els.gachaCard.className = `gacha-card ${pull.item.rarity}`;
+      els.gachaRarity.textContent = pull.item.rarity.toUpperCase();
+      els.gachaName.textContent = pull.item.name;
+      els.gachaSlot.textContent = pull.slot.toUpperCase();
+      els.gachaSwatch.style.background = pull.item.swatch;
+      els.gachaDup.hidden = !pull.dup;
+      els.equipNow.hidden = !!pull.dup;
+    },
+
+    equipGacha() {
+      const pull = this.pendingEquip;
+      if (pull && !pull.dup) Cosmetics.equip(pull.slot, pull.item.id);
+      this.closeGacha();
+      this.renderLocker();
+    },
+
+    closeGacha() {
+      cancelAnimationFrame(this.gachaTimer);
+      this.pulling = false;
+      els.gachaOverlay.hidden = true;
+      Cosmetics.paint();
+      this.renderLocker();
     },
 
     toggleMute() {
@@ -2319,6 +2784,7 @@
       els.result.hidden = true;
       els.start.hidden = false;
       this.renderScores();
+      Cosmetics.paint();
     },
 
     applyKey(key) {
@@ -2406,6 +2872,7 @@
         : r.diff.doorOff
           ? "OFF"
           : `${Math.round(r.doorOpen * 100)}%`;
+      Cosmetics.paint();
 
       const fill = t.boostLeft > 0
         ? (t.boostLeft / ADRENALINE_SEC) * 100
@@ -2588,6 +3055,13 @@
       els.resStreak.textContent = String(this.typing.maxStreak);
       els.resDist.textContent = `${Math.round(this.race.player)}m`;
       this.drawSparkline(this.typing.wpmLog);
+      const reward = Cosmetics.rewardFor(entry.distance, entry.accuracy, this.typing.wpm(), escaped);
+      Cosmetics.addCredits(reward.total);
+      const bits = [`+${reward.base} distance`];
+      if (reward.win) bits.push("+150 escape");
+      if (reward.wpm) bits.push(`+${reward.wpm} WPM`);
+      if (reward.clean) bits.push("+75 clean");
+      els.resCredits.textContent = `DATA SHARDS +${reward.total}  (${bits.join(" · ")})  //  BAL ${Cosmetics.credits}`;
       const hunt = cfg.monsterOff ? "hunt off" : `${cfg.monsterWpm} WPM hunt`;
       const door = cfg.doorOff || cfg.endless ? "door off" : `${Math.round(cfg.doorTime)}s door`;
       els.resSettings.textContent = `${cfg.name}${cfg.endless ? " · Endless" : ""} · ${hunt} · ${door} · stall ${cfg.stall.toFixed(1)}s · ${cfg.textMode || "mix"} text`;
@@ -2600,5 +3074,7 @@
   };
 
   window.__ETB = Game;
+  Game.cosmetics = Cosmetics;
+  Cosmetics.load();
   Game.boot();
 })();
