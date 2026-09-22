@@ -254,6 +254,10 @@
     return m > 0 ? `${m}m ${r}s` : `${r}s`;
   }
 
+  function formatXp(n) {
+    return Math.max(0, Math.floor(Number(n) || 0)).toLocaleString("en-US");
+  }
+
   function loadScores() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -297,9 +301,15 @@
 
   const CREDITS_KEY = "typing_credits";
   const COSMETICS_KEY = "etb-cosmetics";
-  const PULL_COST = 250;
-  const TEN_COST = 2250;
-  const DUP_REFUND = 100;
+  const PULL_COST = 500;
+  const TEN_COST = 4500;
+  const DUP_REFUND = 150;
+  const STREAK_TOASTS = [
+    { at: 10, bonus: 10, text: "10 STREAK: FOCUS (+10 ⬡)" },
+    { at: 20, bonus: 25, text: "20 STREAK: ON FIRE (+25 ⬡)" },
+    { at: 30, bonus: 50, text: "30 STREAK: OVERDRIVE (+50 ⬡)" },
+    { at: 50, bonus: 100, text: "50 STREAK: UNTOUCHABLE (+100 ⬡)" },
+  ];
 
   const CATALOG = {
     runner: [
@@ -310,6 +320,7 @@
       { id: "violet", name: "Cyberpunk Violet", rarity: "rare", visor: "#d07aff", visorHi: "#f0d0ff", body: "#241434", trim: "#4a2870", limbs: "#c9a0ff", swatch: "linear-gradient(90deg,#241434,#d07aff)" },
       { id: "glitch", name: "Neon Glitch", rarity: "legendary", fx: "rgb-wave", visor: "#ff4bd8", visorHi: "#7dfff6", body: "#120818", trim: "#3a2048", limbs: "#e8e8ff", swatch: "linear-gradient(90deg,#ff4bd8,#3dffd0,#ffd24a)" },
       { id: "gold", name: "Gold Protocol", rarity: "legendary", visor: "#ffd24a", visorHi: "#fff4c2", body: "#2a210c", trim: "#6a5418", limbs: "#ffe08a", swatch: "linear-gradient(90deg,#2a210c,#ffd24a)" },
+      { id: "neon-hazard", name: "Neon Hazard", rarity: "exclusive", visor: "#d6ff00", visorHi: "#fff8a8", body: "#101208", trim: "#ff3b8a", limbs: "#c8ff4a", swatch: "linear-gradient(90deg,#101208,#d6ff00,#ff3b8a)" },
     ],
     monster: [
       { id: "ink", name: "Shadow Ink", rarity: "common", body: "#14080c", mid: "#2a1016", horn: "#3a161c", tent: [18, 0, 10], eye: [255, 24, 36], glow: "#ff2030", swatch: "linear-gradient(90deg,#14080c,#ff2030)" },
@@ -433,25 +444,65 @@
         const el = document.getElementById(id);
         if (el) el.textContent = text;
       });
+      this.syncPullButtons();
+      if (typeof Progress !== "undefined") Progress.paintHud();
     },
 
-    rewardFor(distance, accuracy, netWpm, escaped) {
-      const acc = clamp(accuracy, 0, 100);
-      const base = Math.floor((Math.max(0, distance) / 10) * (acc / 100));
-      const win = escaped ? 150 : 0;
-      const wpm = Math.max(0, Math.floor(netWpm || 0));
-      const clean = acc >= 98 ? 75 : 0;
+    syncPullButtons() {
+      const free = typeof Progress !== "undefined" ? Progress.freePulls : 0;
+      document.querySelectorAll("[data-pull]").forEach((btn) => {
+        const count = Number(btn.dataset.pull);
+        const cost = count === 10 ? TEN_COST : PULL_COST;
+        const locked = count === 1 ? (this.credits < cost && free <= 0) : this.credits < cost;
+        btn.disabled = locked;
+        btn.setAttribute("aria-disabled", locked ? "true" : "false");
+        if (count === 1 && free > 0) {
+          btn.title = `Free spin available (${free})`;
+        } else {
+          btn.title = locked ? `Need ${cost} Credits` : `Decrypt for ${cost} Credits`;
+        }
+      });
+      const freeEl = document.getElementById("market-free");
+      if (freeEl) freeEl.textContent = free > 0 ? `${free} free spin${free === 1 ? "" : "s"} ready` : "0 free spins";
+    },
+
+    streakBonus(maxStreak) {
+      const n = Math.max(0, Math.floor(maxStreak || 0));
+      if (n >= 50) return 100;
+      if (n >= 30) return 50;
+      if (n >= 20) return 25;
+      if (n >= 10) return 10;
+      return 0;
+    },
+
+    rewardFor(distance, track, escaped, maxStreak) {
+      let base;
+      let pct;
+      if (escaped) {
+        base = 100;
+        pct = 100;
+      } else {
+        const len = Number.isFinite(track) && track > 0 ? track : TRACK;
+        const ratio = Math.max(0, distance || 0) / len;
+        pct = Math.min(100, Math.max(0, Math.floor(100 * ratio)));
+        base = Math.min(100, Math.max(0, Math.floor(100 * ratio)));
+      }
+      const streak = this.streakBonus(maxStreak);
       return {
         base,
-        win,
-        wpm,
-        clean,
-        total: base + win + wpm + clean,
+        streak,
+        total: base + streak,
+        escaped: !!escaped,
+        pct,
+        maxStreak: Math.max(0, Math.floor(maxStreak || 0)),
+        label: escaped
+          ? `Escape Cleared: +${base} Credits`
+          : `Mission Reward: +${base} Credits (${pct}% Completion)`,
       };
     },
 
     roll(slot) {
-      const pool = this.list(slot);
+      const pool = this.list(slot).filter((item) => item.rarity !== "exclusive");
       const r = Math.random();
       const rarity = r < 0.6 ? "common" : r < 0.9 ? "rare" : "legendary";
       const band = pool.filter((item) => item.rarity === rarity);
@@ -471,6 +522,182 @@
       this.equipped[slot] = id;
       this.save();
       return true;
+    },
+  };
+
+  const PROGRESS_KEY = "etb-progress";
+  const DEFAULT_TITLE = "Unclassified";
+  const MILESTONE_TITLES = {
+    5: "Security Class II",
+    10: "Special Operative",
+    15: "Airlock Breaker",
+    20: "Apex Ghost",
+    25: "Sector Marshal",
+    30: "Breach Sovereign",
+    35: "Void Warden",
+    40: "Protocol Zero",
+    45: "Event Horizon",
+    50: "Omega Clearance",
+  };
+  const RANK_CHIP_IDS = [
+    { lv: "start-level", title: "start-title", fill: "start-xp-fill", tip: "start-xp-tip", chip: "start-rank", xp: "start-xp-text" },
+    { lv: "hud-level", title: "hud-title", fill: "hud-xp-fill", tip: "hud-xp-tip", chip: "hud-rank", xp: "hud-xp-text" },
+    { lv: "market-level", title: "market-title", fill: "market-xp-fill", tip: "market-xp-tip", chip: "market-rank", xp: "market-xp-text" },
+  ];
+
+  const Progress = {
+    totalXp: 0,
+    title: DEFAULT_TITLE,
+    titles: [DEFAULT_TITLE],
+    freePulls: 0,
+    rewardedLevel: 1,
+    milestones: [],
+
+    xpToNext(level) {
+      const lv = Math.max(1, Math.floor(level || 1));
+      return Math.floor(300 * Math.pow(1.15, lv - 1) + (lv * 100));
+    },
+
+    derive(totalXp) {
+      let xp = Math.max(0, Math.floor(totalXp || 0));
+      let level = 1;
+      while (xp >= this.xpToNext(level) && level < 999) {
+        xp -= this.xpToNext(level);
+        level += 1;
+      }
+      const need = this.xpToNext(level);
+      return { level, into: xp, need, pct: need > 0 ? xp / need : 1 };
+    },
+
+    snapshot() {
+      const d = this.derive(this.totalXp);
+      return {
+        totalXp: this.totalXp,
+        level: d.level,
+        into: d.into,
+        need: d.need,
+        pct: d.pct,
+        title: this.title,
+        freePulls: this.freePulls,
+        milestones: [...this.milestones],
+        label: `LV. ${d.level} — ${formatXp(d.into)} / ${formatXp(d.need)} XP`,
+        short: `${formatXp(d.into)} / ${formatXp(d.need)} XP`,
+      };
+    },
+
+    xpFor(distance, accuracy, maxStreak, netWpm, keyCount) {
+      const dist = Math.floor(Math.max(0, distance || 0) / 10);
+      const typed = Math.max(0, Math.floor(keyCount || 0)) > 0;
+      const acc = typed ? Math.max(0, Math.round(clamp(accuracy || 0, 0, 100))) : 0;
+      const streak = Math.max(0, Math.floor(maxStreak || 0)) * 2;
+      const wpm = Math.max(0, Math.floor(netWpm || 0));
+      return { dist, acc, streak, wpm, total: dist + acc + streak + wpm };
+    },
+
+    load() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(PROGRESS_KEY) || "null");
+        if (raw && typeof raw === "object") {
+          this.totalXp = Math.max(0, Math.floor(Number(raw.totalXp) || 0));
+          this.titles = Array.isArray(raw.titles) && raw.titles.length ? raw.titles : [DEFAULT_TITLE];
+          this.title = raw.title && this.titles.includes(raw.title) ? raw.title : this.titles[this.titles.length - 1];
+          this.freePulls = Math.max(0, Math.floor(Number(raw.freePulls) || 0));
+          this.rewardedLevel = Math.max(1, Math.floor(Number(raw.rewardedLevel) || 1));
+          this.milestones = Array.isArray(raw.milestones)
+            ? raw.milestones.map((n) => Math.floor(n)).filter((n) => n > 0)
+            : [];
+        }
+      } catch { /* defaults */ }
+      if (!this.titles.includes(DEFAULT_TITLE)) this.titles.unshift(DEFAULT_TITLE);
+      const now = this.derive(this.totalXp).level;
+      this.rewardedLevel = now;
+      this.save();
+      this.paintHud();
+    },
+
+    save() {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+        totalXp: this.totalXp,
+        level: this.derive(this.totalXp).level,
+        title: this.title,
+        titles: this.titles,
+        freePulls: this.freePulls,
+        rewardedLevel: this.rewardedLevel,
+        milestones: this.milestones,
+      }));
+    },
+
+    addTitle(name) {
+      if (!name) return;
+      if (!this.titles.includes(name)) this.titles.push(name);
+      this.title = name;
+    },
+
+    milestoneTitle(level) {
+      if (MILESTONE_TITLES[level]) return MILESTONE_TITLES[level];
+      const tier = Math.floor(level / 5);
+      return `Clearance Class ${tier}`;
+    },
+
+    rewardForLevel(level) {
+      const rewards = [];
+      if (level > 0 && level % 5 === 0) {
+        this.freePulls += 1;
+        const name = this.milestoneTitle(level);
+        this.addTitle(name);
+        if (!this.milestones.includes(level)) this.milestones.push(level);
+        rewards.push("+500 Credits", "1 Free Gacha Pull", `Title unlocked: "${name}"`);
+        if (level === 15 && !Cosmetics.owns("runner", "neon-hazard")) {
+          Cosmetics.owned.runner.push("neon-hazard");
+          Cosmetics.save();
+          rewards.push('Runner skin unlocked: "Neon Hazard"');
+        }
+        return { level, credits: 500, rewards, milestone: true, title: name };
+      }
+      rewards.push("+50 Credits", "Rank advanced");
+      return { level, credits: 50, rewards, milestone: false };
+    },
+
+    addXp(amount) {
+      const gained = Math.max(0, Math.floor(amount || 0));
+      const before = this.snapshot();
+      this.totalXp += gained;
+      const after = this.snapshot();
+      const grants = [];
+      let extraCredits = 0;
+      for (let lv = before.level + 1; lv <= after.level; lv++) {
+        const grant = this.rewardForLevel(lv);
+        extraCredits += grant.credits;
+        grants.push(grant);
+      }
+      this.rewardedLevel = after.level;
+      this.save();
+      if (extraCredits) Cosmetics.addCredits(extraCredits);
+      this.paintHud();
+      return { before, after, grants, extraCredits, gained };
+    },
+
+    paintHud() {
+      const snap = this.snapshot();
+      const pct = `${Math.round(snap.pct * 1000) / 10}%`;
+      RANK_CHIP_IDS.forEach((ids) => {
+        const lv = document.getElementById(ids.lv);
+        const title = document.getElementById(ids.title);
+        const fill = document.getElementById(ids.fill);
+        const tip = document.getElementById(ids.tip);
+        const chip = document.getElementById(ids.chip);
+        if (lv) lv.textContent = `LV. ${snap.level}`;
+        if (title) title.textContent = snap.title;
+        if (fill) fill.style.width = pct;
+        const xpEl = document.getElementById(ids.xp);
+        if (xpEl) xpEl.textContent = snap.short;
+        if (tip) tip.textContent = snap.label;
+        if (chip) {
+          chip.title = snap.label;
+          chip.setAttribute("aria-label", `${snap.label}, ${snap.title}`);
+        }
+      });
+      Cosmetics.syncPullButtons();
     },
   };
 
@@ -872,6 +1099,26 @@
           setTimeout(() => this.beep(f, 0.22, "square", 0.1), 80 + i * 90);
         });
       }
+    },
+
+    streakChime(at) {
+      this.ensure();
+      const roots = { 10: 523, 20: 659, 30: 784, 50: 1046 };
+      const root = roots[at] || 523;
+      [0, 4, 7, 12].forEach((semi, i) => {
+        const freq = root * Math.pow(2, semi / 12);
+        setTimeout(() => this.beep(freq, 0.11 + i * 0.03, "sine", 0.055 + i * 0.012), i * 52);
+      });
+    },
+
+    levelUp() {
+      this.ensure();
+      const notes = [392, 523, 659, 784, 1046, 1318];
+      notes.forEach((f, i) => {
+        setTimeout(() => this.beep(f, 0.16, "triangle", 0.11), i * 68);
+      });
+      setTimeout(() => this.beep(1568, 0.42, "sine", 0.14), 430);
+      this.noise(0.18, 0.08, 900);
     },
   };
 
@@ -2181,6 +2428,28 @@
     resSettings: $("res-settings"),
     resRecord: $("result-record"),
     resCredits: $("res-credits"),
+    resBaseCredits: $("res-base-credits"),
+    resStreakBonus: $("res-streak-bonus"),
+    resTotalCredits: $("res-total-credits"),
+    streakToast: $("streak-toast"),
+    resXpDist: $("res-xp-dist"),
+    resXpAcc: $("res-xp-acc"),
+    resXpStreak: $("res-xp-streak"),
+    resXpWpm: $("res-xp-wpm"),
+    resXpTotal: $("res-xp-total"),
+    resXpFill: $("res-xp-fill"),
+    resXpMeta: $("res-xp-meta"),
+    resXpTrack: $("res-xp-track"),
+    levelup: $("levelup-overlay"),
+    levelupStage: $("levelup-stage"),
+    levelupBurst: $("levelup-burst"),
+    levelupKicker: $("levelup-kicker"),
+    levelupBanner: $("levelup-banner"),
+    levelupFree: $("levelup-free"),
+    levelupNum: $("levelup-num"),
+    levelupRange: $("levelup-range"),
+    levelupRewards: $("levelup-rewards"),
+    levelupAck: $("btn-levelup-ack"),
     vaultBtn: $("btn-vault"),
     resultVault: $("btn-result-vault"),
     market: $("market-modal"),
@@ -2238,6 +2507,7 @@
       WordsView.mount();
       this.applySettingsToForm();
       Cosmetics.load();
+      Progress.load();
       Cosmetics.paint();
       this.renderScores();
       this.syncMuteButtons();
@@ -2289,13 +2559,21 @@
       els.tabLocker.addEventListener("click", () => this.showMarketTab("locker"));
       els.vaultView.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-pull]");
-        if (!btn) return;
+        if (!btn || btn.disabled) return;
         const card = btn.closest("[data-banner]");
         if (!card) return;
         this.pullBanner(card.dataset.banner, Number(btn.dataset.pull));
       });
       els.equipNow.addEventListener("click", () => this.equipGacha());
       els.gachaDone.addEventListener("click", () => this.closeGacha());
+      if (els.levelupAck) els.levelupAck.addEventListener("click", () => this.closeLevelUp());
+      document.querySelectorAll(".rank-chip").forEach((chip) => {
+        chip.addEventListener("click", (e) => {
+          e.stopPropagation();
+          chip.classList.toggle("show-tip");
+          setTimeout(() => chip.classList.remove("show-tip"), 2200);
+        });
+      });
       ["runner", "monster", "sector"].forEach((slot) => {
         document.getElementById(`locker-${slot}`).addEventListener("click", (e) => {
           const item = e.target.closest("[data-id]");
@@ -2467,6 +2745,14 @@
     },
 
     onFlowKey(e) {
+      if (els.levelup && !els.levelup.hidden) {
+        if (e.key === "Escape" || e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          this.closeLevelUp();
+        }
+        return;
+      }
       if (!els.gachaOverlay.hidden) {
         if (e.key === "Escape") {
           e.preventDefault();
@@ -2580,7 +2866,7 @@
           btn.type = "button";
           btn.className = `locker-item ${item.rarity}${owned ? "" : " locked"}${Cosmetics.equipped[slot] === item.id ? " equipped" : ""}`;
           btn.dataset.id = item.id;
-          btn.innerHTML = `<div class="swatch" style="background:${item.swatch}"></div><span class="name">${item.name}</span><span class="rarity">${item.rarity.toUpperCase()}${owned ? "" : " // LOCKED"}</span>`;
+          btn.innerHTML = `<div class="swatch" style="background:${item.swatch}"></div><span class="name">${item.name}</span><span class="rarity">${item.rarity.toUpperCase()}${owned ? "" : item.id === "neon-hazard" ? " // LV. 15" : " // LOCKED"}</span>`;
           host.appendChild(btn);
         });
       });
@@ -2589,7 +2875,8 @@
     pullBanner(slot, count) {
       if (this.pulling) return;
       const cost = count === 10 ? TEN_COST : PULL_COST;
-      if (Cosmetics.credits < cost) {
+      const useFree = count === 1 && Progress.freePulls > 0;
+      if (!useFree && Cosmetics.credits < cost) {
         els.gachaOverlay.hidden = false;
         els.gachaReel.hidden = true;
         els.gachaCard.hidden = false;
@@ -2603,7 +2890,13 @@
         return;
       }
       AudioSystem.resume();
-      Cosmetics.spend(cost);
+      if (useFree) {
+        Progress.freePulls -= 1;
+        Progress.save();
+        Progress.paintHud();
+      } else {
+        Cosmetics.spend(cost);
+      }
       this.pulling = true;
       this.lastPulls = [];
       const n = count === 10 ? 10 : 1;
@@ -2617,7 +2910,7 @@
       els.gachaCard.hidden = true;
       els.gachaMulti.hidden = true;
       els.equipNow.hidden = false;
-      const names = Cosmetics.list(slot).map((item) => item.name);
+      const names = Cosmetics.list(slot).filter((item) => item.rarity !== "exclusive").map((item) => item.name);
       const start = performance.now();
       const spin = (now) => {
         const t = now - start;
@@ -2651,7 +2944,7 @@
           const mini = document.createElement("button");
           mini.type = "button";
           mini.className = `gacha-mini ${pull.item.rarity}`;
-          mini.innerHTML = `<div class="swatch" style="background:${pull.item.swatch}"></div>${pull.item.name}${pull.dup ? "<br>DUP +100" : ""}`;
+          mini.innerHTML = `<div class="swatch" style="background:${pull.item.swatch}"></div>${pull.item.name}${pull.dup ? "<br>DUP +150" : ""}`;
           mini.addEventListener("click", () => {
             this.pendingEquip = pull;
             this.showGachaCard(pull);
@@ -2689,6 +2982,174 @@
       this.pulling = false;
       els.gachaOverlay.hidden = true;
       Cosmetics.paint();
+      this.renderLocker();
+    },
+
+    maybeStreakToast() {
+      const n = this.typing.streak;
+      const tier = STREAK_TOASTS.find((item) => item.at === n);
+      if (!tier) return;
+      this.showStreakToast(tier);
+    },
+
+    showStreakToast(tier) {
+      const el = els.streakToast;
+      if (!el) return;
+      AudioSystem.resume();
+      AudioSystem.streakChime(tier.at);
+      el.hidden = false;
+      el.setAttribute("aria-hidden", "false");
+      el.textContent = tier.text;
+      el.className = `streak-toast tier-${tier.at}`;
+      const caret = document.getElementById("caret");
+      const panel = document.getElementById("typing-panel");
+      if (caret && panel) {
+        const cr = caret.getBoundingClientRect();
+        const pr = panel.getBoundingClientRect();
+        const left = clamp(cr.left - pr.left - 24, 8, Math.max(8, pr.width - 260));
+        const top = clamp(cr.top - pr.top - 36, 6, Math.max(6, pr.height - 40));
+        el.style.left = `${left}px`;
+        el.style.top = `${top}px`;
+      }
+      el.style.animation = "none";
+      void el.offsetWidth;
+      el.style.animation = "";
+      clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(() => {
+        el.hidden = true;
+        el.setAttribute("aria-hidden", "true");
+      }, 1400);
+    },
+
+    paintRewardBreakdown(reward) {
+      if (els.resBaseCredits) {
+        els.resBaseCredits.textContent = `+${reward.base} Credits`;
+      }
+      if (els.resStreakBonus) {
+        els.resStreakBonus.textContent = reward.streak
+          ? `+${reward.streak} Credits (${reward.maxStreak} streak)`
+          : "+0 Credits";
+      }
+      if (els.resTotalCredits) {
+        els.resTotalCredits.textContent = "+0 Credits";
+        this.animateRewardTotal(reward.total);
+      }
+      if (els.resCredits) {
+        els.resCredits.textContent = `${reward.label}  ·  ${reward.base} + ${reward.streak}  //  BAL ${Cosmetics.credits}`;
+      }
+    },
+
+    animateRewardTotal(total) {
+      cancelAnimationFrame(this.rewardAnim);
+      const start = performance.now();
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / 780);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const n = Math.round(total * eased);
+        if (els.resTotalCredits) els.resTotalCredits.textContent = `+${n} Credits`;
+        if (t < 1) this.rewardAnim = requestAnimationFrame(tick);
+      };
+      this.rewardAnim = requestAnimationFrame(tick);
+    },
+
+    paintXpBreakdown(xp, before, after) {
+      if (els.resXpDist) els.resXpDist.textContent = `+${xp.dist}`;
+      if (els.resXpAcc) els.resXpAcc.textContent = `+${xp.acc}`;
+      if (els.resXpStreak) els.resXpStreak.textContent = `+${xp.streak}`;
+      if (els.resXpWpm) els.resXpWpm.textContent = `+${xp.wpm}`;
+      if (els.resXpTotal) els.resXpTotal.textContent = "+0";
+      if (els.resXpFill) els.resXpFill.style.width = `${Math.round(before.pct * 1000) / 10}%`;
+      if (els.resXpMeta) els.resXpMeta.textContent = before.label;
+      if (els.resXpTrack) els.resXpTrack.title = before.label;
+      this.animateXpBar(xp, before, after);
+    },
+
+    animateXpBar(xp, before, after) {
+      cancelAnimationFrame(this.xpAnim);
+      const start = performance.now();
+      const duration = after.level > before.level ? 1100 : 820;
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        if (els.resXpTotal) els.resXpTotal.textContent = `+${Math.round(xp.total * eased)}`;
+        if (after.level > before.level) {
+          const fill = t < 0.45
+            ? before.pct + (1 - before.pct) * (t / 0.45)
+            : after.pct * ((t - 0.45) / 0.55);
+          if (els.resXpFill) els.resXpFill.style.width = `${Math.round(clamp(fill, 0, 1) * 1000) / 10}%`;
+          const lv = t < 0.45 ? before.level : after.level;
+          const into = t < 0.45 ? Math.round(before.into + (before.need - before.into) * (t / 0.45)) : after.into;
+          const need = t < 0.45 ? before.need : after.need;
+          if (els.resXpMeta) els.resXpMeta.textContent = `LV. ${lv} — ${formatXp(Math.min(into, need))} / ${formatXp(need)} XP`;
+        } else {
+          const into = Math.round(before.into + (after.into - before.into) * eased);
+          if (els.resXpFill) els.resXpFill.style.width = `${Math.round((into / after.need) * 1000) / 10}%`;
+          if (els.resXpMeta) els.resXpMeta.textContent = `LV. ${after.level} — ${formatXp(into)} / ${formatXp(after.need)} XP`;
+        }
+        if (t < 1) this.xpAnim = requestAnimationFrame(tick);
+      };
+      this.xpAnim = requestAnimationFrame(tick);
+    },
+
+    showLevelUp(grants, beforeLevel) {
+      if (!els.levelup || !grants.length) return;
+      const last = grants[grants.length - 1];
+      const first = grants[0];
+      const milestones = grants.filter((g) => g.milestone);
+      const major = milestones[milestones.length - 1] || null;
+      els.levelupNum.textContent = `LV. ${last.level}`;
+      if (els.levelupStage) els.levelupStage.classList.toggle("milestone", !!major);
+      if (els.levelupKicker) {
+        els.levelupKicker.textContent = major
+          ? `MAJOR MILESTONE REACHED: LEVEL ${major.level}`
+          : "CLEARANCE UPGRADED";
+      }
+      if (els.levelupBanner) {
+        els.levelupBanner.hidden = !major;
+        if (major) els.levelupBanner.textContent = `MAJOR MILESTONE REACHED: LEVEL ${major.level}`;
+      }
+      if (els.levelupFree) {
+        els.levelupFree.hidden = !major;
+        if (major) {
+          const pulls = milestones.length;
+          const creds = milestones.reduce((sum, g) => sum + g.credits, 0);
+          els.levelupFree.textContent = pulls === 1
+            ? "+500 CREDITS (1 FREE GACHA PULL) UNLOCKED!"
+            : `+${formatXp(creds)} CREDITS (${pulls} FREE GACHA PULLS) UNLOCKED!`;
+        }
+      }
+      if (els.levelupRange) {
+        els.levelupRange.textContent = grants.length > 1
+          ? `LV. ${beforeLevel} → LV. ${last.level}`
+          : `LV. ${first.level - 1} → LV. ${first.level}`;
+      }
+      if (els.levelupRewards) {
+        els.levelupRewards.replaceChildren();
+        grants.forEach((grant) => {
+          grant.rewards.forEach((line) => {
+            const li = document.createElement("li");
+            li.textContent = `LV. ${grant.level} · ${line}`;
+            els.levelupRewards.appendChild(li);
+          });
+        });
+      }
+      if (els.levelupBurst) {
+        els.levelupBurst.replaceChildren();
+        for (let i = 0; i < 20; i++) {
+          const spark = document.createElement("span");
+          spark.style.setProperty("--a", `${(360 / 20) * i}deg`);
+          spark.style.setProperty("--d", `${48 + (i % 5) * 14}px`);
+          els.levelupBurst.appendChild(spark);
+        }
+      }
+      els.levelup.hidden = false;
+      AudioSystem.resume();
+      AudioSystem.levelUp();
+    },
+
+    closeLevelUp() {
+      if (els.levelup) els.levelup.hidden = true;
+      Progress.paintHud();
       this.renderLocker();
     },
 
@@ -2762,6 +3223,13 @@
       els.start.hidden = true;
       els.result.hidden = true;
       els.game.hidden = false;
+      if (els.streakToast) {
+        els.streakToast.hidden = true;
+        els.streakToast.className = "streak-toast";
+      }
+      if (els.levelup) els.levelup.hidden = true;
+      clearTimeout(this.levelupTimer);
+      this.levelupTimer = 0;
       WordsView.rebuild(this.typing);
       this.updateHud();
       requestAnimationFrame(() => {
@@ -2783,6 +3251,10 @@
       els.game.hidden = true;
       els.result.hidden = true;
       els.start.hidden = false;
+      if (els.streakToast) els.streakToast.hidden = true;
+      if (els.levelup) els.levelup.hidden = true;
+      clearTimeout(this.levelupTimer);
+      this.levelupTimer = 0;
       this.renderScores();
       Cosmetics.paint();
     },
@@ -2799,6 +3271,7 @@
       else if (result === "err" || result === "extra") this.race.nudge(false);
       if (key === " " && result === "ok") {
         Renderer.spawnWordBurst(Renderer.lastPlayerX, Renderer.lastPlayerY + 58);
+        this.maybeStreakToast();
       }
       WordsView.sync(this.typing);
       this.updateHud();
@@ -2866,6 +3339,10 @@
       els.wpm.textContent = live == null ? "--" : String(Math.round(live));
       els.acc.textContent = `${Math.round(t.accuracy())}%`;
       els.streak.textContent = String(t.streak);
+      els.streak.classList.toggle("hot", t.streak >= 10 && t.streak < 20);
+      els.streak.classList.toggle("fire", t.streak >= 20 && t.streak < 30);
+      els.streak.classList.toggle("overdrive", t.streak >= 30 && t.streak < 50);
+      els.streak.classList.toggle("flow", t.streak >= 50);
       els.dist.textContent = `${Math.floor(Math.max(0, r.player))}m`;
       els.door.textContent = r.diff.endless
         ? "ENDLESS"
@@ -3013,6 +3490,7 @@
     },
 
     finish(result) {
+      if (this.state === "victory" || this.state === "defeat") return;
       this.state = result === "win" ? "victory" : "defeat";
       cancelAnimationFrame(this.raf);
       AudioSystem.stopAmbience();
@@ -3055,13 +3533,18 @@
       els.resStreak.textContent = String(this.typing.maxStreak);
       els.resDist.textContent = `${Math.round(this.race.player)}m`;
       this.drawSparkline(this.typing.wpmLog);
-      const reward = Cosmetics.rewardFor(entry.distance, entry.accuracy, this.typing.wpm(), escaped);
+      const trackLen = Number.isFinite(this.race.track) ? this.race.track : TRACK;
+      const reward = Cosmetics.rewardFor(entry.distance, trackLen, escaped, this.typing.maxStreak);
       Cosmetics.addCredits(reward.total);
-      const bits = [`+${reward.base} distance`];
-      if (reward.win) bits.push("+150 escape");
-      if (reward.wpm) bits.push(`+${reward.wpm} WPM`);
-      if (reward.clean) bits.push("+75 clean");
-      els.resCredits.textContent = `DATA SHARDS +${reward.total}  (${bits.join(" · ")})  //  BAL ${Cosmetics.credits}`;
+      const xp = Progress.xpFor(entry.distance, entry.accuracy, this.typing.maxStreak, this.typing.wpm(), this.typing.totalKeys);
+      const progress = Progress.addXp(xp.total);
+      this.paintRewardBreakdown(reward);
+      this.paintXpBreakdown(xp, progress.before, progress.after);
+      clearTimeout(this.levelupTimer);
+      this.levelupTimer = 0;
+      if (progress.grants.length) {
+        this.levelupTimer = setTimeout(() => this.showLevelUp(progress.grants, progress.before.level), 1050);
+      }
       const hunt = cfg.monsterOff ? "hunt off" : `${cfg.monsterWpm} WPM hunt`;
       const door = cfg.doorOff || cfg.endless ? "door off" : `${Math.round(cfg.doorTime)}s door`;
       els.resSettings.textContent = `${cfg.name}${cfg.endless ? " · Endless" : ""} · ${hunt} · ${door} · stall ${cfg.stall.toFixed(1)}s · ${cfg.textMode || "mix"} text`;
@@ -3075,6 +3558,8 @@
 
   window.__ETB = Game;
   Game.cosmetics = Cosmetics;
+  Game.progress = Progress;
   Cosmetics.load();
+  Progress.load();
   Game.boot();
 })();

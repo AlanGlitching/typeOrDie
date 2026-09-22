@@ -25,10 +25,21 @@
           <button id="btn-endless" class="toggle-btn" type="button" aria-pressed="false">Endless Mode</button>
           <button id="btn-lab" class="toggle-btn" type="button" aria-pressed="false" aria-expanded="false">Customize</button>
           <button id="btn-vault" class="toggle-btn vault-btn" type="button">Black Market Vault</button>
-          <div class="credits-chip" title="Data Shards">
-            <span class="credits-ico">◆</span>
-            <span id="start-credits">0</span>
-            <span class="credits-unit">CR</span>
+          <div class="econ-row">
+            <button class="rank-chip" id="start-rank" type="button" aria-label="Account rank">
+              <span class="rank-lv" id="start-level">LV. 1</span>
+              <span class="rank-body">
+                <span class="rank-title" id="start-title">Unclassified</span>
+                <span class="rank-xp" id="start-xp-text">0 / 400 XP</span>
+                <span class="xp-track"><span class="xp-fill" id="start-xp-fill"></span></span>
+              </span>
+              <span class="xp-tip" id="start-xp-tip">LV. 1 — 0 / 400 XP</span>
+            </button>
+            <div class="credits-chip" title="Data Shards">
+              <span class="credits-ico">◆</span>
+              <span id="start-credits">0</span>
+              <span class="credits-unit">CR</span>
+            </div>
           </div>
         </div>
 
@@ -131,11 +142,20 @@
         <div class="hud-stats">
           <div class="stat"><span class="stat-label">WPM</span><span id="stat-wpm">0</span></div>
           <div class="stat"><span class="stat-label">ACC</span><span id="stat-acc">100%</span></div>
-          <div class="stat"><span class="stat-label">STREAK</span><span id="stat-streak">0</span></div>
+          <div class="stat"><span class="stat-label">STREAK</span><span id="stat-streak" class="stat-streak">0</span></div>
           <div class="stat"><span class="stat-label">DIST</span><span id="stat-dist">0m</span></div>
           <div class="stat"><span class="stat-label">DOOR</span><span id="stat-door">100%</span></div>
           <div class="stat"><span class="stat-label">CREDITS</span><span id="stat-credits">0</span></div>
         </div>
+        <button class="rank-chip compact" id="hud-rank" type="button" aria-label="Account rank">
+          <span class="rank-lv" id="hud-level">LV. 1</span>
+          <span class="rank-body">
+            <span class="rank-title" id="hud-title">Unclassified</span>
+            <span class="rank-xp" id="hud-xp-text">0 / 400 XP</span>
+            <span class="xp-track"><span class="xp-fill" id="hud-xp-fill"></span></span>
+          </span>
+          <span class="xp-tip" id="hud-xp-tip">LV. 1 — 0 / 400 XP</span>
+        </button>
         <button id="btn-mute-game" class="ghost-btn compact" type="button">Audio: On</button>
       </header>
 
@@ -166,6 +186,7 @@
           <div id="words"></div>
           <div id="caret" class="idle" aria-hidden="true"></div>
         </div>
+        <div id="streak-toast" class="streak-toast" hidden aria-hidden="true"></div>
         <p id="focus-hint" class="focus-hint">Press Tab + Enter to restart</p>
         <input
           id="mobile-input"
@@ -198,6 +219,31 @@
           <span class="spark-label">PACE // WPM TIMELINE</span>
           <canvas id="wpm-spark" width="560" height="88" aria-label="WPM over time"></canvas>
         </div>
+        <div class="credits-break" id="credits-break">
+          <p class="credits-row">
+            <span>Base Distance</span>
+            <strong id="res-base-credits">+0 Credits</strong>
+          </p>
+          <p class="credits-row">
+            <span>Max Streak Bonus</span>
+            <strong id="res-streak-bonus">+0 Credits</strong>
+          </p>
+          <p class="credits-row total">
+            <span>Total Earned</span>
+            <strong id="res-total-credits">+0 Credits</strong>
+          </p>
+        </div>
+        <div class="xp-break" id="xp-break">
+          <p class="credits-row"><span>Distance XP</span><strong id="res-xp-dist">+0</strong></p>
+          <p class="credits-row"><span>Accuracy XP</span><strong id="res-xp-acc">+0</strong></p>
+          <p class="credits-row"><span>Max Streak XP</span><strong id="res-xp-streak">+0</strong></p>
+          <p class="credits-row"><span>WPM XP</span><strong id="res-xp-wpm">+0</strong></p>
+          <p class="credits-row total"><span>Total XP</span><strong id="res-xp-total">+0</strong></p>
+          <div class="res-xp-track" id="res-xp-track">
+            <div class="xp-fill" id="res-xp-fill"></div>
+          </div>
+          <p id="res-xp-meta" class="xp-meta">LV. 1 — 0 / 400 XP</p>
+        </div>
         <p id="res-credits" class="credits-award"></p>
         <p id="res-settings" class="settings-line"></p>
         <p id="result-record" class="record-line"></p>
@@ -221,6 +267,15 @@
             <span id="market-credits">0</span>
             <span class="credits-unit">CR</span>
           </div>
+          <button class="rank-chip compact" id="market-rank" type="button" aria-label="Account rank">
+            <span class="rank-lv" id="market-level">LV. 1</span>
+            <span class="rank-body">
+              <span class="rank-title" id="market-title">Unclassified</span>
+              <span class="rank-xp" id="market-xp-text">0 / 400 XP</span>
+              <span class="xp-track"><span class="xp-fill" id="market-xp-fill"></span></span>
+            </span>
+            <span class="xp-tip" id="market-xp-tip">LV. 1 — 0 / 400 XP</span>
+          </button>
           <button id="btn-market-close" class="ghost-btn compact" type="button">Close</button>
         </header>
         <div class="market-tabs" role="tablist">
@@ -228,7 +283,7 @@
           <button id="tab-locker" class="market-tab" type="button" aria-selected="false">Locker / Armory</button>
         </div>
         <div id="vault-view">
-          <p class="lore market-copy">250 Credits per decrypt. 2,250 for a 10x burst. Duplicates convert to 100 shards.</p>
+          <p class="lore market-copy">500 Credits per decrypt. 4,500 for a 10x burst. Duplicates refund 150 Credits. <span id="market-free">0 free spins</span></p>
           <div class="banner-grid">
             <article class="banner-card" data-banner="runner">
               <span class="banner-tag">01 // CHARACTER</span>
@@ -240,8 +295,8 @@
                 <li>10% Legendary · Neon Glitch / Gold</li>
               </ul>
               <div class="banner-actions">
-                <button class="primary-btn" type="button" data-pull="1">Pull 250</button>
-                <button class="ghost-btn" type="button" data-pull="10">10x 2,250</button>
+                <button class="primary-btn" type="button" data-pull="1">Pull 1x - 500 Credits</button>
+                <button class="ghost-btn" type="button" data-pull="10">Pull 10x - 4,500 Credits</button>
               </div>
             </article>
             <article class="banner-card" data-banner="monster">
@@ -254,8 +309,8 @@
                 <li>10% Legendary · Void Singularity</li>
               </ul>
               <div class="banner-actions">
-                <button class="primary-btn" type="button" data-pull="1">Pull 250</button>
-                <button class="ghost-btn" type="button" data-pull="10">10x 2,250</button>
+                <button class="primary-btn" type="button" data-pull="1">Pull 1x - 500 Credits</button>
+                <button class="ghost-btn" type="button" data-pull="10">Pull 10x - 4,500 Credits</button>
               </div>
             </article>
             <article class="banner-card" data-banner="sector">
@@ -268,8 +323,8 @@
                 <li>10% Legendary · Quantum Warp</li>
               </ul>
               <div class="banner-actions">
-                <button class="primary-btn" type="button" data-pull="1">Pull 250</button>
-                <button class="ghost-btn" type="button" data-pull="10">10x 2,250</button>
+                <button class="primary-btn" type="button" data-pull="1">Pull 1x - 500 Credits</button>
+                <button class="ghost-btn" type="button" data-pull="10">Pull 10x - 4,500 Credits</button>
               </div>
             </article>
           </div>
@@ -302,13 +357,27 @@
           <div id="gacha-swatch" class="gacha-swatch"></div>
           <h3 id="gacha-name">Item</h3>
           <p id="gacha-slot" class="gacha-slot">Runner</p>
-          <p id="gacha-dup" class="dup-msg" hidden>Duplicate Converted to 100 Shards</p>
+          <p id="gacha-dup" class="dup-msg" hidden>Duplicate detected: +150 Credits refunded</p>
           <div class="gacha-actions">
             <button id="btn-equip-now" class="primary-btn" type="button">Equip Now</button>
             <button id="btn-gacha-done" class="ghost-btn" type="button">Continue</button>
           </div>
         </article>
         <div id="gacha-multi" class="gacha-multi" hidden></div>
+      </div>
+    </div>
+
+    <div id="levelup-overlay" hidden>
+      <div class="levelup-stage" id="levelup-stage">
+        <div id="levelup-burst" class="levelup-burst" aria-hidden="true"></div>
+        <p id="levelup-kicker" class="levelup-kicker">CLEARANCE UPGRADED</p>
+        <p id="levelup-banner" class="milestone-banner" hidden>MAJOR MILESTONE REACHED: LEVEL 5</p>
+        <h2 class="levelup-title">LEVEL UP!</h2>
+        <p id="levelup-num" class="levelup-num">LV. 2</p>
+        <p id="levelup-range" class="levelup-range">LV. 1 → LV. 2</p>
+        <p id="levelup-free" class="milestone-free" hidden>+500 CREDITS (1 FREE GACHA PULL) UNLOCKED!</p>
+        <ul id="levelup-rewards" class="levelup-rewards"></ul>
+        <button id="btn-levelup-ack" class="primary-btn" type="button">Acknowledge</button>
       </div>
     </div>
   </div>
