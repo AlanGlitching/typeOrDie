@@ -3607,6 +3607,7 @@
     vaultView: $("vault-view"),
     lockerView: $("locker-view"),
     gachaOverlay: $("gacha-overlay"),
+    gachaClose: $("btn-gacha-close"),
     gachaVfx: $("gacha-vfx"),
     gachaCharge: $("gacha-charge"),
     gachaOrb: $("gacha-orb"),
@@ -3709,6 +3710,13 @@
       els.vaultBtn.addEventListener("click", () => this.openMarket("vault"));
       els.resultVault.addEventListener("click", () => this.openMarket("vault"));
       els.marketClose.addEventListener("click", () => this.closeMarket());
+      els.market.addEventListener("click", (e) => {
+        if (e.target === els.market) this.closeMarket();
+      });
+      if (els.gachaClose) els.gachaClose.addEventListener("click", () => this.closeGacha());
+      els.gachaOverlay.addEventListener("click", (e) => {
+        if (e.target === els.gachaOverlay) this.closeGacha();
+      });
       const openVault = () => this.openDataVault();
       if (els.dataVaultBtn) els.dataVaultBtn.addEventListener("click", openVault);
       if (els.dataVaultFoot) els.dataVaultFoot.addEventListener("click", openVault);

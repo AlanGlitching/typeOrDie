@@ -69,7 +69,7 @@ body {
   inset: 0;
   z-index: 20;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 24px;
   overflow: auto;
@@ -79,6 +79,7 @@ body {
 
 .panel {
   width: min(980px, 100%);
+  margin-block: auto;
   background: linear-gradient(180deg, rgba(18, 25, 34, 0.96), rgba(12, 17, 24, 0.98));
   border: 1px solid var(--line);
   box-shadow:
@@ -1119,10 +1120,23 @@ h1 {
 }
 
 .market-head {
+  position: sticky;
+  top: -8px;
+  z-index: 8;
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 16px;
+  margin: -8px -8px 16px;
+  padding: 8px;
+  background: linear-gradient(180deg, rgba(18, 25, 34, 0.98), rgba(12, 17, 24, 0.94));
+}
+
+.overlay-close,
+#btn-market-close,
+#btn-data-close,
+#btn-gacha-close {
+  flex: none;
+  margin-left: auto;
 }
 
 .market-head h2 {
@@ -1231,6 +1245,9 @@ h1 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
+  max-height: min(62vh, 640px);
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .locker-wrap h3 {
@@ -1707,7 +1724,15 @@ h1 {
   align-items: center;
   justify-content: center;
   background: rgba(4, 6, 10, 0.86);
-  overflow: hidden;
+  overflow: auto;
+}
+
+.gacha-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 32;
+  margin: 0;
 }
 
 #gacha-overlay.tier-common { background: rgba(8, 12, 16, 0.9); }
