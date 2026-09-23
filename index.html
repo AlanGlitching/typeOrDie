@@ -295,12 +295,19 @@
           <div class="banner-grid">
             <article class="banner-card" data-banner="runner">
               <span class="banner-tag">01 // CHARACTER</span>
-              <h3>Runner Visor &amp; Skins</h3>
-              <p>Helmet paints and visor protocols for the operator.</p>
+              <h3>Operator Chassis</h3>
+              <div class="banner-preview">
+                <div class="skin-preview slot-runner model-cyan" aria-hidden="true"></div>
+                <div class="skin-preview slot-runner model-steel" aria-hidden="true"></div>
+                <div class="skin-preview slot-runner model-emerald" aria-hidden="true"></div>
+                <div class="skin-preview slot-runner model-glitch" aria-hidden="true"></div>
+              </div>
+              <p>Distinct runner builds—visor ops, plate walkers, phantoms, sealed suits. Not paint jobs.</p>
               <ul class="drop-table">
-                <li>60% Common · Cyan / Hazard / Steel</li>
-                <li>30% Rare · Emerald / Violet</li>
-                <li>10% Legendary · Neon Glitch / Gold</li>
+                <li>60% Common · Operator / Hazmat / Plate Walker</li>
+                <li>30% Rare · Emerald Phantom / Neon Courier</li>
+                <li>10% Legendary · Neon Glitch / Gold Protocol</li>
+                <li>24 skins total across all banners · rarity shown before the name</li>
               </ul>
               <div class="banner-actions">
                 <button class="primary-btn" type="button" data-pull="1">Pull 1x - 500 Credits</button>
@@ -309,12 +316,19 @@
             </article>
             <article class="banner-card" data-banner="monster">
               <span class="banner-tag">02 // ABYSS</span>
-              <h3>Abyssal Mutations</h3>
-              <p>Reskin Experiment-09. Make the hunt look worse.</p>
+              <h3>Abyssal Forms</h3>
+              <div class="banner-preview">
+                <div class="skin-preview slot-monster model-ink" aria-hidden="true"></div>
+                <div class="skin-preview slot-monster model-crimson" aria-hidden="true"></div>
+                <div class="skin-preview slot-monster model-toxic" aria-hidden="true"></div>
+                <div class="skin-preview slot-monster model-void" aria-hidden="true"></div>
+                <div class="skin-preview slot-monster model-leviathan" aria-hidden="true"></div>
+              </div>
+              <p>Mutate Experiment-09 into different anatomies—tentacles, claws, hive, ice, void.</p>
               <ul class="drop-table">
-                <li>60% Common · Ink / Crimson</li>
-                <li>30% Rare · Toxic / Frozen</li>
-                <li>10% Legendary · Void Singularity</li>
+                <li>60% Common · Ink / Crimson / Ash Stalker</li>
+                <li>30% Rare · Spore Hive / Rime / Static Wraith</li>
+                <li>10% Legendary · Void Singularity / Helix Leviathan</li>
               </ul>
               <div class="banner-actions">
                 <button class="primary-btn" type="button" data-pull="1">Pull 1x - 500 Credits</button>
@@ -323,12 +337,19 @@
             </article>
             <article class="banner-card" data-banner="sector">
               <span class="banner-tag">03 // SECTORS</span>
-              <h3>Corridor Themes</h3>
-              <p>Rewrite the walls you sprint through.</p>
+              <h3>Sector Architecture</h3>
+              <div class="banner-preview">
+                <div class="skin-preview slot-sector model-industrial" aria-hidden="true"></div>
+                <div class="skin-preview slot-sector model-subway" aria-hidden="true"></div>
+                <div class="skin-preview slot-sector model-biodome" aria-hidden="true"></div>
+                <div class="skin-preview slot-sector model-quantum" aria-hidden="true"></div>
+                <div class="skin-preview slot-sector model-eclipse" aria-hidden="true"></div>
+              </div>
+              <p>Swap the corridor itself: pipes, tiled stations, glass biodomes, wet neon, quantum space.</p>
               <ul class="drop-table">
-                <li>60% Common · Industrial / Subway</li>
-                <li>30% Rare · Bio-Dome / Neon Underpass</li>
-                <li>10% Legendary · Quantum Warp</li>
+                <li>60% Common · Industrial / Subway / Flooded Archive</li>
+                <li>30% Rare · Bio-Dome / Underpass / Magma Foundry</li>
+                <li>10% Legendary · Quantum Warp / Solar Eclipse</li>
               </ul>
               <div class="banner-actions">
                 <button class="primary-btn" type="button" data-pull="1">Pull 1x - 500 Credits</button>
@@ -338,7 +359,7 @@
           </div>
         </div>
         <div id="locker-view" hidden>
-          <p class="lore market-copy">Equip one runner, one mutation, and one sector. Selections persist.</p>
+          <p class="lore market-copy">Equip a chassis, a mutation, and a sector. Each one changes silhouette, props, and motion—not just color.</p>
           <div class="locker-wrap">
             <section>
               <h3>Runner</h3>
@@ -395,7 +416,14 @@
     <div id="app-toast" class="app-toast" hidden role="status"></div>
 
     <div id="gacha-overlay" hidden>
+      <div id="gacha-vfx" class="gacha-vfx" aria-hidden="true"></div>
       <div class="gacha-stage">
+        <div id="gacha-charge" class="gacha-charge" hidden>
+          <div class="gacha-rings" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div id="gacha-orb" class="gacha-orb"></div>
+          <p id="gacha-charge-label">SCANNING POOL…</p>
+          <p id="gacha-tier-hint" class="gacha-tier-hint">STABLE</p>
+        </div>
         <p id="gacha-reel" class="gacha-reel">DECRYPTING PROTOCOL…</p>
         <article id="gacha-card" class="gacha-card" hidden>
           <span id="gacha-rarity" class="gacha-rarity">RARE</span>
