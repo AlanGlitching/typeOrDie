@@ -1,3 +1,42 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD81t5HSIZlRaHzriWGdzM3TLkII-nSxBg",
+  authDomain: "escape-the-breach.firebaseapp.com",
+  projectId: "escape-the-breach",
+  storageBucket: "escape-the-breach.firebasestorage.app",
+  messagingSenderId: "653563574903",
+  appId: "1:653563574903:web:cf995f1dac0c25d682a472",
+  measurementId: "G-EBSV8D9SST"
+};
+
+let firebaseApp = null;
+let firebaseAuth = null;
+let firebaseDb = null;
+try {
+  firebaseApp = initializeApp(firebaseConfig);
+  firebaseAuth = getAuth(firebaseApp);
+  firebaseDb = getFirestore(firebaseApp);
+} catch (err) {
+  console.warn("[ETB] Firebase init failed", err);
+}
+
 (() => {
   "use strict";
 
@@ -716,6 +755,8 @@
     records: { bestWpm: 0, maxStreak: 0, longestEndless: 0 },
     writing: false,
     ready: false,
+    lastSavedAt: 0,
+    preserveStamp: false,
 
     snapshot() {
       const snap = Progress.snapshot();
@@ -745,9 +786,22 @@
       if (this.writing || !this.ready) return;
       this.writing = true;
       try {
-        localStorage.setItem(SAVE_KEY, JSON.stringify(this.snapshot()));
+        const data = this.snapshot();
+        if (this.preserveStamp && this.lastSavedAt) data.savedAt = this.lastSavedAt;
+        this.lastSavedAt = data.savedAt;
+        localStorage.setItem(SAVE_KEY, JSON.stringify(data));
       } catch { /* quota */ }
       finally { this.writing = false; }
+      if (typeof Cloud !== "undefined") Cloud.queuePush();
+    },
+
+    localStamp() {
+      try {
+        const data = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
+        const stamp = Number(data && data.savedAt);
+        if (Number.isFinite(stamp) && stamp > 0) return stamp;
+      } catch { /* ignore */ }
+      return this.lastSavedAt || 0;
     },
 
     encode(data) {
@@ -826,9 +880,13 @@
       }
 
       this.ready = true;
+      const stamp = Number(data.savedAt);
+      if (Number.isFinite(stamp) && stamp > 0) this.lastSavedAt = stamp;
       if (persistAfter !== false) {
+        this.preserveStamp = true;
         Cosmetics.save();
         Progress.save();
+        this.preserveStamp = false;
       }
       Cosmetics.paint();
       Progress.paintHud();
@@ -889,8 +947,11 @@
       if (!this.validate(data)) data = this.migrateLegacy();
       this.apply(data, false);
       this.ready = true;
+      this.preserveStamp = true;
+      if (!this.lastSavedAt) this.lastSavedAt = Date.now();
       Cosmetics.save();
       Progress.save();
+      this.preserveStamp = false;
     },
 
     noteRun(entry, maxStreak) {
@@ -1020,6 +1081,182 @@
     refreshExport() {
       const out = document.getElementById("save-code-out");
       if (out) out.value = this.encode();
+    },
+  };
+
+  const Cloud = {
+    app: firebaseApp,
+    auth: firebaseAuth,
+    db: firebaseDb,
+    user: null,
+    applying: false,
+    syncing: false,
+    fromVault: false,
+    pushTimer: 0,
+    unsub: null,
+    google: null,
+
+    boot() {
+      this.paint();
+      if (!this.auth) {
+        this.paint("CLOUD OFFLINE // local save only");
+        return;
+      }
+      try { this.google = new GoogleAuthProvider(); } catch { this.google = null; }
+      if (this.unsub) this.unsub();
+      this.unsub = onAuthStateChanged(this.auth, async (user) => {
+        this.user = user || null;
+        this.paint(user ? "UPLINK // hydrating…" : null);
+        if (user) await this.pullAndMerge(true);
+        else this.paint();
+      });
+    },
+
+    email() {
+      const el = document.getElementById("auth-email");
+      return el ? String(el.value || "").trim() : "";
+    },
+
+    password() {
+      const el = document.getElementById("auth-password");
+      return el ? String(el.value || "") : "";
+    },
+
+    errMsg(err) {
+      const code = err && err.code ? String(err.code) : "";
+      const map = {
+        "auth/invalid-email": "Invalid email address.",
+        "auth/user-not-found": "No operator found for that email.",
+        "auth/wrong-password": "Wrong password.",
+        "auth/invalid-credential": "Email or password did not match.",
+        "auth/email-already-in-use": "That email is already linked.",
+        "auth/weak-password": "Password must be at least 6 characters.",
+        "auth/too-many-requests": "Too many attempts. Wait and retry.",
+        "auth/network-request-failed": "Network failed. Local save is still on.",
+        "auth/popup-closed-by-user": "Google sign-in was cancelled.",
+        "auth/operation-not-allowed": "That sign-in method is disabled in Firebase.",
+        "auth/unauthorized-domain": "This domain is not authorized in Firebase Auth.",
+        "permission-denied": "Cloud write blocked. Check Firestore rules.",
+        unavailable: "Cloud unavailable. Playing locally.",
+      };
+      return map[code] || (err && err.message) || "Cloud request failed. Local save is still on.";
+    },
+
+    paint(statusOverride) {
+      const guest = !this.user;
+      const email = this.user && this.user.email ? this.user.email : "";
+      const short = email ? email.split("@")[0] : "Linked";
+      if (els.accountBtn) {
+        els.accountBtn.textContent = guest ? "Operator Link" : short;
+        els.accountBtn.classList.toggle("linked", !guest);
+      }
+      if (els.vaultAccount) els.vaultAccount.textContent = guest ? "Operator Link" : "Manage Link";
+      const status = statusOverride
+        || (!this.auth ? "CLOUD OFFLINE // local save only" : guest ? "GUEST // local only" : `LINKED // ${email}`);
+      if (els.vaultAuthStatus) els.vaultAuthStatus.textContent = status;
+      if (els.accountStatus) {
+        els.accountStatus.textContent = guest
+          ? "Sign in to store progression in Cloud Firestore. Local auto-save still runs if you stay a guest."
+          : "Operator linked. Local persist auto-syncs to players/{uid}.";
+      }
+      if (els.accountEmail) els.accountEmail.textContent = guest ? "GUEST" : `LINKED // ${email}`;
+      if (els.accountForm) els.accountForm.hidden = !guest;
+      if (els.accountSigned) els.accountSigned.hidden = guest;
+      if (els.cloudSync) els.cloudSync.disabled = guest || !this.db;
+    },
+
+    queuePush() {
+      if (this.applying || this.syncing || !this.user || !this.db) return;
+      clearTimeout(this.pushTimer);
+      this.pushTimer = setTimeout(() => {
+        this.push().catch((err) => SaveStore.toast(this.errMsg(err), "error"));
+      }, 800);
+    },
+
+    payload() {
+      const data = JSON.parse(JSON.stringify(SaveStore.snapshot()));
+      data.savedAt = SaveStore.localStamp() || data.savedAt;
+      data.uid = this.user ? this.user.uid : "";
+      data.email = this.user && this.user.email ? this.user.email : "";
+      data.updatedAt = serverTimestamp();
+      return data;
+    },
+
+    async push() {
+      if (!this.user || !this.db || this.applying) return;
+      await setDoc(doc(this.db, "players", this.user.uid), this.payload(), { merge: true });
+    },
+
+    async pullAndMerge(quiet) {
+      if (!this.user || !this.db) {
+        this.paint();
+        if (!quiet) SaveStore.toast("Sign in to sync the cloud.", "error");
+        return;
+      }
+      if (this.syncing) return;
+      this.syncing = true;
+      this.paint("UPLINK // syncing…");
+      try {
+        const snap = await getDoc(doc(this.db, "players", this.user.uid));
+        const localAt = SaveStore.localStamp();
+        if (!snap.exists()) {
+          await this.push();
+          SaveStore.toast("Operator linked. Local save uploaded.");
+          return;
+        }
+        const remote = snap.data() || {};
+        const remoteAt = Number(remote.savedAt) || 0;
+        if (remoteAt > localAt && SaveStore.validate(remote)) {
+          this.applying = true;
+          SaveStore.preserveStamp = true;
+          const level = SaveStore.apply(remote, true);
+          SaveStore.preserveStamp = false;
+          this.applying = false;
+          SaveStore.refreshExport();
+          SaveStore.toast(`Cloud save restored. Level ${level} loaded.`);
+        } else if (localAt > remoteAt) {
+          await this.push();
+          SaveStore.toast("Local save uploaded to cloud.");
+        } else if (!quiet) {
+          SaveStore.toast("Cloud save already current.");
+        }
+      } catch (err) {
+        SaveStore.toast(this.errMsg(err), "error");
+      } finally {
+        this.syncing = false;
+        this.applying = false;
+        SaveStore.preserveStamp = false;
+        this.paint();
+      }
+    },
+
+    async signIn() {
+      if (!this.auth) return SaveStore.toast("Cloud offline. Local save is still on.", "error");
+      try { await signInWithEmailAndPassword(this.auth, this.email(), this.password()); }
+      catch (err) { SaveStore.toast(this.errMsg(err), "error"); }
+    },
+
+    async register() {
+      if (!this.auth) return SaveStore.toast("Cloud offline. Local save is still on.", "error");
+      try {
+        await createUserWithEmailAndPassword(this.auth, this.email(), this.password());
+        SaveStore.toast("Account created. Uploading local save…");
+      } catch (err) { SaveStore.toast(this.errMsg(err), "error"); }
+    },
+
+    async googleSignIn() {
+      if (!this.auth || !this.google) return SaveStore.toast("Google sign-in unavailable.", "error");
+      try { await signInWithPopup(this.auth, this.google); }
+      catch (err) { SaveStore.toast(this.errMsg(err), "error"); }
+    },
+
+    async signOutUser() {
+      if (!this.auth) return;
+      try {
+        clearTimeout(this.pushTimer);
+        await signOut(this.auth);
+        SaveStore.toast("Signed out. Local save remains on this device.");
+      } catch (err) { SaveStore.toast(this.errMsg(err), "error"); }
     },
   };
 
@@ -3600,6 +3837,22 @@
     saveApply: $("btn-save-apply"),
     saveReset: $("btn-save-reset"),
     saveCodeIn: $("save-code-in"),
+    account: $("account-modal"),
+    accountBtn: $("btn-account"),
+    accountClose: $("btn-account-close"),
+    accountForm: $("account-form"),
+    accountSigned: $("account-signed"),
+    accountStatus: $("account-status"),
+    accountEmail: $("account-email"),
+    authEmail: $("auth-email"),
+    authPassword: $("auth-password"),
+    authRegister: $("btn-auth-register"),
+    authGoogle: $("btn-auth-google"),
+    authSync: $("btn-auth-sync"),
+    authSignOut: $("btn-auth-signout"),
+    vaultAuthStatus: $("vault-auth-status"),
+    vaultAccount: $("btn-vault-account"),
+    cloudSync: $("btn-cloud-sync"),
     market: $("market-modal"),
     marketClose: $("btn-market-close"),
     tabVault: $("tab-vault"),
@@ -3663,6 +3916,7 @@
       Cosmetics.load();
       Progress.load();
       SaveStore.boot();
+      Cloud.boot();
       Cosmetics.paint();
       this.renderScores();
       this.syncMuteButtons();
@@ -3735,6 +3989,22 @@
         SaveStore.importCode(els.saveCodeIn ? els.saveCodeIn.value : "");
       });
       if (els.saveReset) els.saveReset.addEventListener("click", () => SaveStore.reset());
+      const openAccount = () => this.openAccount();
+      if (els.accountBtn) els.accountBtn.addEventListener("click", openAccount);
+      if (els.vaultAccount) els.vaultAccount.addEventListener("click", () => this.openAccount(true));
+      if (els.accountClose) els.accountClose.addEventListener("click", () => this.closeAccount());
+      if (els.account) els.account.addEventListener("click", (e) => {
+        if (e.target === els.account) this.closeAccount();
+      });
+      if (els.accountForm) els.accountForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        Cloud.signIn();
+      });
+      if (els.authRegister) els.authRegister.addEventListener("click", () => Cloud.register());
+      if (els.authGoogle) els.authGoogle.addEventListener("click", () => Cloud.googleSignIn());
+      if (els.authSync) els.authSync.addEventListener("click", () => Cloud.pullAndMerge());
+      if (els.authSignOut) els.authSignOut.addEventListener("click", () => Cloud.signOutUser());
+      if (els.cloudSync) els.cloudSync.addEventListener("click", () => Cloud.pullAndMerge());
       els.tabVault.addEventListener("click", () => this.showMarketTab("vault"));
       els.tabLocker.addEventListener("click", () => this.showMarketTab("locker"));
       els.vaultView.addEventListener("click", (e) => {
@@ -3799,7 +4069,7 @@
 
       window.addEventListener("keydown", (e) => {
         if (this.state !== "start") return;
-        if (!els.market.hidden || !els.gachaOverlay.hidden || (els.dataVault && !els.dataVault.hidden)) return;
+        if (!els.market.hidden || !els.gachaOverlay.hidden || (els.dataVault && !els.dataVault.hidden) || (els.account && !els.account.hidden)) return;
         const map = { 1: "recruit", 2: "scout", 3: "operative", 4: "nightmare", 5: "apex" };
         if (map[e.key]) this.start(this.configFromPreset(map[e.key]));
       });
@@ -3925,6 +4195,14 @@
     },
 
     onFlowKey(e) {
+      if (els.account && !els.account.hidden) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          this.closeAccount();
+        }
+        return;
+      }
       if (els.dataVault && !els.dataVault.hidden) {
         if (e.key === "Escape") {
           e.preventDefault();
@@ -4013,6 +4291,7 @@
     },
 
     openMarket(tab) {
+      if (els.account) els.account.hidden = true;
       if (els.dataVault) els.dataVault.hidden = true;
       els.result.hidden = true;
       els.start.hidden = true;
@@ -4045,12 +4324,49 @@
       els.start.hidden = true;
       els.game.hidden = true;
       els.result.hidden = true;
+      if (els.account) els.account.hidden = true;
+      Cloud.fromVault = false;
       if (els.dataVault) els.dataVault.hidden = false;
       SaveStore.refreshExport();
+      Cloud.paint();
     },
 
     closeDataVault() {
       if (els.dataVault) els.dataVault.hidden = true;
+      if (this.state === "victory" || this.state === "defeat") {
+        els.result.hidden = false;
+      } else {
+        els.start.hidden = false;
+        this.state = "start";
+      }
+      Cosmetics.paint();
+      Progress.paintHud();
+    },
+
+    openAccount(fromVault) {
+      if (this.state === "playing") {
+        SaveStore.toast("Finish the run to open Operator Link.");
+        return;
+      }
+      Cloud.fromVault = !!fromVault;
+      els.gachaOverlay.hidden = true;
+      els.market.hidden = true;
+      els.start.hidden = true;
+      els.game.hidden = true;
+      els.result.hidden = true;
+      if (els.dataVault) els.dataVault.hidden = true;
+      if (els.account) els.account.hidden = false;
+      Cloud.paint();
+      if (els.authEmail && !Cloud.user) els.authEmail.focus();
+    },
+
+    closeAccount() {
+      if (els.account) els.account.hidden = true;
+      if (Cloud.fromVault) {
+        Cloud.fromVault = false;
+        this.openDataVault();
+        return;
+      }
       if (this.state === "victory" || this.state === "defeat") {
         els.result.hidden = false;
       } else {
@@ -4520,6 +4836,8 @@
 
       els.start.hidden = true;
       els.result.hidden = true;
+      if (els.account) els.account.hidden = true;
+      if (els.dataVault) els.dataVault.hidden = true;
       els.game.hidden = false;
       if (els.streakToast) {
         els.streakToast.hidden = true;
@@ -4548,6 +4866,8 @@
       AudioSystem.updateRumble(0);
       els.game.hidden = true;
       els.result.hidden = true;
+      if (els.account) els.account.hidden = true;
+      if (els.dataVault) els.dataVault.hidden = true;
       els.start.hidden = false;
       if (els.streakToast) els.streakToast.hidden = true;
       if (els.levelup) els.levelup.hidden = true;
@@ -4859,5 +5179,6 @@
   Game.cosmetics = Cosmetics;
   Game.progress = Progress;
   Game.saveStore = SaveStore;
+  Game.cloud = Cloud;
   Game.boot();
 })();

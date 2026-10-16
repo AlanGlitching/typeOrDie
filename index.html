@@ -28,6 +28,7 @@
           <button id="btn-data-vault" class="toggle-btn vault-data-btn" type="button" aria-label="Open Data Vault">
             <span class="gear-ico" aria-hidden="true">⚙</span> Data Vault
           </button>
+          <button id="btn-account" class="toggle-btn auth-btn" type="button" aria-label="Open operator link">Operator Link</button>
           <div class="econ-row">
             <button class="rank-chip" id="start-rank" type="button" aria-label="Account rank">
               <span class="rank-lv" id="start-level">LV. 1</span>
@@ -129,7 +130,7 @@
             <button id="btn-mute-start" class="ghost-btn" type="button">Audio: On</button>
             <button id="btn-data-vault-foot" class="ghost-btn compact gear-btn" type="button" aria-label="Open Data Vault">⚙</button>
           </div>
-          <p class="hint">Presets start immediately. Endless + Customize persist between runs. Auto-save is always on.</p>
+          <p class="hint">Presets start immediately. Endless + Customize persist between runs. Auto-save is always on. Sign in to sync across devices.</p>
         </div>
 
         <div class="scores-block">
@@ -387,7 +388,14 @@
           </div>
           <button id="btn-data-close" class="ghost-btn compact" type="button">Close</button>
         </header>
-        <p class="lore market-copy">Hands-free local save is always on. Export a file or code to move this operator between machines.</p>
+        <p class="lore market-copy">Hands-free local save is always on. Sign in to sync this operator to the cloud, or export a file/code to move between machines.</p>
+        <div class="vault-cloud">
+          <p id="vault-auth-status" class="auth-status">GUEST // local only</p>
+          <div class="reset-row">
+            <button id="btn-vault-account" class="ghost-btn" type="button">Operator Link</button>
+            <button id="btn-cloud-sync" class="primary-btn compact-sync" type="button">Sync Cloud Now</button>
+          </div>
+        </div>
         <div class="vault-grid">
           <section class="vault-col">
             <h3>Export Progress</h3>
@@ -408,6 +416,41 @@
           <div class="reset-row">
             <input id="reset-confirm" type="text" autocomplete="off" spellcheck="false" placeholder="RESET">
             <button id="btn-save-reset" class="danger-btn" type="button">Reset Data</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="account-modal" class="overlay" hidden aria-label="Operator Link">
+      <div class="panel account-panel">
+        <header class="market-head">
+          <div>
+            <p class="eyebrow">UPLINK // IDENTITY</p>
+            <h2>Operator Link</h2>
+          </div>
+          <button id="btn-account-close" class="ghost-btn compact" type="button">Close</button>
+        </header>
+        <p id="account-status" class="lore market-copy">Sign in to store progression in Cloud Firestore. Local auto-save still runs if you stay a guest.</p>
+        <form id="account-form" class="account-form">
+          <label>
+            Email
+            <input id="auth-email" type="email" autocomplete="email" required placeholder="operator@sector7.net">
+          </label>
+          <label>
+            Password
+            <input id="auth-password" type="password" autocomplete="current-password" required minlength="6" placeholder="min 6 characters">
+          </label>
+          <div class="account-actions">
+            <button id="btn-auth-signin" class="primary-btn" type="submit">Sign In</button>
+            <button id="btn-auth-register" class="ghost-btn" type="button">Create Account</button>
+            <button id="btn-auth-google" class="ghost-btn" type="button">Continue with Google</button>
+          </div>
+        </form>
+        <div id="account-signed" class="account-signed" hidden>
+          <p id="account-email" class="auth-status">Linked</p>
+          <div class="account-actions">
+            <button id="btn-auth-sync" class="primary-btn" type="button">Pull / Push Cloud Save</button>
+            <button id="btn-auth-signout" class="ghost-btn" type="button">Sign Out</button>
           </div>
         </div>
       </div>
@@ -455,6 +498,6 @@
       </div>
     </div>
   </div>
-  <script src="game.js"></script>
+  <script type="module" src="game.js"></script>
 </body>
 </html>
